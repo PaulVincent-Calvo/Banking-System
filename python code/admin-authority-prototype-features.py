@@ -11,19 +11,12 @@ from tabulate import tabulate # for precise (& effortless lol) tables & columns 
 def connectDatabase():
   connection = None
   try:
-    host = "localhost"  # Set the host to "localhost" or kapg di gumana ay try nyo 127.0.0.1 or mismong name ng host sa device nyo
-    username = "userConnect_toDB"
-    password = "paconnect_idol"
-    database = "_banking_system"
-
     connection = mysql.connector.connect(
-        host=host,
-        user=username,
-        password=password,
-        database=database
+      host="localhost",
+      user="newUser2",
+      password="gumana_ka_na_pls",
+      database="banking_management"
     )
-    
-    print("Database Initialization Successful...")
     
     print("Database Initialization Successful...")
     
