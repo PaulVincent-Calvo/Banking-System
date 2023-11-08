@@ -305,8 +305,8 @@ def exit_page(connection):
 try:
     connection = mysql.connector.connect(
         host="localhost",
-        user="root", # put user that you used when you were setting up MySQL (default is root)
-        password="password", # put password that you used when you were setting up mysql
+        user="admin", # put user that you used when you were setting up MySQL (default is root)
+        password="user", # put password that you used when you were setting up mysql
         database="bankingoop" 
     )
 
