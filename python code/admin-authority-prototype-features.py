@@ -4,6 +4,10 @@ from decimal import Decimal # for Decimal datatype input in mysql
 from tabulate import tabulate # for precise (& effortless lol) tables & columns formatting 
 
 
+
+# NOTE: import nyo muna yung tabulate library sa cmd: pip install tabulate
+# then restart vs code
+
 def connectDatabase():
   connection = None
   try:
