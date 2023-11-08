@@ -13,8 +13,8 @@ def connectDatabase():
   try:
     connection = mysql.connector.connect(
       host="localhost",
-      user="root",
-      password="",
+      user="newUser2",
+      password="gumana_ka_na_pls",
       database="banking_management"
     )
     
@@ -24,6 +24,7 @@ def connectDatabase():
     print(f"Failed Database Connectivity: {error}")
     
   return connection
+
 
 
 def tableFormatter(cursor): # using the tabulate library
