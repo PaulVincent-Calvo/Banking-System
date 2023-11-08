@@ -4,18 +4,19 @@ from decimal import Decimal # for Decimal datatype input in mysql
 from tabulate import tabulate # for precise (& effortless lol) tables & columns formatting 
 
 
-
-# NOTE: import nyo muna yung tabulate library sa cmd: pip install tabulate
-# then restart vs code
-
 def connectDatabase():
   connection = None
   try:
+    host = "localhost"  # Set the host to "localhost"
+    username = "user_to_connect"
+    password = "paconnect_lods"
+    database = "banking_system"
+
     connection = mysql.connector.connect(
-      host="localhost",
-      user="newUser2",
-      password="gumana_ka_na_pls",
-      database="banking_management"
+        host= host,
+        user= username,
+        password= password,
+        database= database
     )
     
     print("Database Initialization Successful...")
@@ -24,7 +25,6 @@ def connectDatabase():
     print(f"Failed Database Connectivity: {error}")
     
   return connection
-
 
 
 def tableFormatter(cursor): # using the tabulate library
