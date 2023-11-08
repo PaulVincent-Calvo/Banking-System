@@ -307,7 +307,7 @@ try:
         host="localhost",
         user="root", # put user that you used when you were setting up MySQL (default is root)
         password="password", # put password that you used when you were setting up mysql
-        database="banking_system"
+        database="bankingoop" 
     )
 
     home_page(connection)
