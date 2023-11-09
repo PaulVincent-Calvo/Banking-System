@@ -298,18 +298,90 @@ def checkCosAcc_existence(cursor, accnum):
   account_exists = cursor.fetchone()
   return account_exists
 
+
 def customerWith(connection, accnum):
   os.system('cls')
   cursor = connection.cursor()
-  try:
-    query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-    cursor.execute(query,(accnum,))
-    tableFormatter(cursor)
 
-    print("\n\t___________________________\n")
-    action = int(input("\tEnter the amount you want to withdraw: "))
-  except:
-      print(f"\tInvalid Input....")
+  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+  cursor.execute(query,(accnum,))
+  result = cursor.fetchone()
+  Balance = result[0]
+
+  while True:
+    while True:
+      os.system('cls')
+      try:
+        print("\n\t___________________________\n"
+            f"\n\tYour cerrent balance is {Balance:.2f}\n")
+        action = int(input("\tEnter the amount you want to withdraw: "))
+        break
+      except ValueError:
+        print("\n\t___________________________\n"
+              "\n\tError, please enter a valid integer")
+      
+    if action <= Balance:
+      os.system('cls')
+      print(f"\n\tThe amount you want to withdraw is {action}...\n")
+      newbal = Balance - action
+      query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
+      cursor.execute(query, (newbal, accnum))
+      connection.commit()
+
+      query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+      cursor.execute(query,(accnum,))
+      result = cursor.fetchone()
+      Balance = result[0]
+    
+      print("\n\t___________________________\n"
+            f"\n\tTransaction completed successfully, your new balance is {newbal:.2f}.")
+      input("\tPress Enter to Return to Customer Home Page...")
+      break
+
+    elif action > Balance:
+      os.system('cls')
+      print(f"\n\t___________________________\n"
+            "\n\tThe amount you want to withdraw exceeds your current balnce")
+      if not continueSession():
+          break
+
+
+def customerDpst(connection, accnum):
+  os.system('cls')
+  cursor = connection.cursor()
+
+  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+  cursor.execute(query,(accnum,))
+  result = cursor.fetchone()
+  Balance = result[0]
+
+  while True:
+    try:
+      os.system('cls')
+      print("\n\t___________________________\n"
+          f"\n\tYour cerrent balance is {Balance:.2f}\n")
+      action = int(input("\tEnter the amount you want to deposit: "))
+      break
+    except ValueError:
+      print("\n\t___________________________\n"
+            "\n\tError, please enter a valid integer")
+    
+  os.system('cls')
+  print(f"\n\tThe amount you want to deposit is {action}...\n")
+  newbal = Balance + action
+  query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
+  cursor.execute(query, (newbal, accnum))
+  connection.commit()
+
+  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+  cursor.execute(query,(accnum,))
+  result = cursor.fetchone()
+  Balance = result[0]
+
+  print("\n\t___________________________\n"
+        f"\n\tTransaction completed successfully, your new balance is {newbal:.2f}.")
+  input("\tPress Enter to Return to Customer Home Page...")
+
 
 def customerBal(connection, accnum):
   os.system('cls')
@@ -348,7 +420,7 @@ def customerMain():
             customerWith(connection, accnum)
 
           elif action == 2:
-            break
+            customerDpst(connection, accnum)
 
           elif action == 3:
             break
@@ -372,6 +444,7 @@ def customerMain():
   
 # program entrance
 adminMain()
+#customerMain() # for customer page
 
 
 
