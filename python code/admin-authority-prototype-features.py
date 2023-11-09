@@ -292,7 +292,82 @@ def admin_deleteUser(connection):
     except ValueError as error:
       print(f"Invalid Input....{error}")
   
+def checkCosAcc_existence(cursor, accnum):
+  query = f"SELECT * FROM customermainaccount WHERE AccountNumber = %s"
+  cursor.execute(query, (accnum,))
+  account_exists = cursor.fetchone()
+  return account_exists
 
+def customerWith(connection, accnum):
+  os.system('cls')
+  cursor = connection.cursor()
+  try:
+    query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+    cursor.execute(query,(accnum,))
+    tableFormatter(cursor)
+
+    print("\n\t___________________________\n")
+    action = int(input("\tEnter the amount you want to withdraw: "))
+  except:
+      print(f"\tInvalid Input....")
+
+def customerBal(connection, accnum):
+  os.system('cls')
+  cursor = connection.cursor()
+
+  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
+  cursor.execute(query,(accnum,))
+  result = cursor.fetchone()
+  Balance = result[0]
+  print("\n\t___________________________\n")
+  print(f"\tYour Current Balance is {Balance:.2f}.")
+  input("\tPress Enter to Return to Customer Home Page...")
+
+def customerMain():
+  os.system('cls')
+  connection = connectDatabase()
+  cursor = connection.cursor()
+
+  while True:
+    accnum = input(str("\n\tEnter you dedicated account number: "))
+    account_exist = checkCosAcc_existence(cursor, accnum)
+    if account_exist:
+      while True:
+        try:
+          os.system('cls')
+          print("\n_______Customer Page_______\n"
+          "\t[1] Withdraw Money\n"
+          "\t[2] Deposit Amount\n"
+          "\t[3] Transfer Money\n"
+          "\t[4] Check Balance\n"
+          "\t[5] Logout")
+          
+          action = int(input("\n\tAction: "))
+          
+          if action == 1:
+            customerWith(connection, accnum)
+
+          elif action == 2:
+            break
+
+          elif action == 3:
+            break
+
+          elif action == 4:
+            customerBal(connection, accnum)
+          
+          elif action == 5:
+            os.system('cls')
+            break
+          
+          else:
+            print("Invalid Input...")
+            
+        except ValueError as error:
+          print(f"Invalid Input...")
+    else:
+      os.system('cls')
+      print(f"Invalid Account Number...")
 
   
 # program entrance
