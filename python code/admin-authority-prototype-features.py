@@ -6,10 +6,10 @@ from tabulate import tabulate # for precise (& effortless lol) tables & columns 
 
 def connectDatabase():
   connection = None
-  try:
-    host = "localhost"  # Set the host to "localhost"
-    username = "user_to_connect"
-    password = "paconnect_lods"
+  try:                     # NOTE: all users who will access the database must be connected to the same network
+    host = "192.168.1.24"  # Set to this according to your internet's ip address (to check the ip address, go to the terminal and type: ipconfig)
+    username = "miguel"
+    password = "password"
     database = "banking_system"
 
     connection = mysql.connector.connect(
