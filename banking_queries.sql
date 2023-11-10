@@ -36,6 +36,27 @@ CREATE TABLE CustomerMainAccount(
 );
 
 
+-- TO EASILY ACCESS ALL RECORDS W/OUT THE NEED OF putting the actual query in the python code: (Note: to access a view: SELECT * FROM all_records)
+CREATE VIEW all_records AS
+SELECT 
+  P.CustomerID, 
+  C.accountnumber, 
+  C.AccountType, 
+  P.UserFName, 
+  P.UserLName, 
+  FORMAT(C.Balance, 2) AS Balance, 
+  C.Status, 
+  I.IDNumber, 
+  I.IDType, 
+  F.Occupation, 
+  FORMAT(F.AnnualGrossIncome, 2) AS AnnualGrossIncome 
+FROM 
+  CustomerMainAccount AS C  
+JOIN UserPersonalInfo AS P ON C.CustomerID = P.CustomerID 
+JOIN UserIdentityInfo AS I ON C.CustomerID = I.CustomerID AND C.CustomerID = I.CustomerID 
+JOIN UserFinanceInfo AS F ON C.CustomerID = F.CustomerID AND I.IDNumber = F.IDNumber;
+
+
 INSERT INTO UserPersonalInfo (CustomerID, UserFName, UserLName)
 VALUES
   ('Cust001', 'John', 'Doe'),
