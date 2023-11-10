@@ -139,25 +139,27 @@ def admin_viewUser(connection):
         # retrieving customer information by joining multiple tables based on foreign key references
         # combining data from CustomerMainAccount, UserPersonalInfo, UserIdentityInfo, and UserFinanceInfo tables
 
-        query = """
-        SELECT 
-            P.CustomerID, 
-            C.AccountNumber, 
-            C.AccountType, 
-            P.UserFName, 
-            P.UserLName, 
-            FORMAT(C.Balance, 2) AS Balance, 
-            C.Status, 
-            I.IDNumber, 
-            I.IDType, 
-            F.Occupation, 
-            FORMAT(F.AnnualGrossIncome, 2) AS AnnualGrossIncome 
-        FROM 
-            CustomerMainAccount AS C  
-        JOIN UserPersonalInfo AS P ON C.CustomerID = P.CustomerID 
-        JOIN UserIdentityInfo AS I ON C.CustomerID = I.CustomerID AND C.CustomerID = I.CustomerID 
-        JOIN UserFinanceInfo AS F ON C.CustomerID = F.CustomerID AND I.IDNumber = F.IDNumber
-        """
+        # query = """
+        # SELECT 
+        #     P.CustomerID, 
+        #     C.AccountNumber, 
+        #     C.AccountType, 
+        #     P.UserFName, 
+        #     P.UserLName, 
+        #     FORMAT(C.Balance, 2) AS Balance, 
+        #     C.Status, 
+        #     I.IDNumber, 
+        #     I.IDType, 
+        #     F.Occupation, 
+        #     FORMAT(F.AnnualGrossIncome, 2) AS AnnualGrossIncome 
+        # FROM 
+        #     CustomerMainAccount AS C  
+        # JOIN UserPersonalInfo AS P ON C.CustomerID = P.CustomerID 
+        # JOIN UserIdentityInfo AS I ON C.CustomerID = I.CustomerID AND C.CustomerID = I.CustomerID 
+        # JOIN UserFinanceInfo AS F ON C.CustomerID = F.CustomerID AND I.IDNumber = F.IDNumber
+        # """
+
+        query = "SELECT * FROM all_records" # using a VIEW to access the JOINED statements
         cursor.execute(query)
         tableFormatter(cursor)
         if not continueSession(): 
