@@ -2,15 +2,21 @@ import mysql.connector
 import os
 from decimal import Decimal # for Decimal datatype input in mysql
 from tabulate import tabulate # for precise (& effortless lol) tables & columns formatting 
+from datetime import datetime
+
+
+# NOTE: to finish (bukas ko gawin pagod na q)
+#       1. Add User 
+#       2. Adapt Customer Functionalities to the "bankingoop" -- dinuplicate ko kase database ni paul 
 
 
 def connectDatabase():
   connection = None
   try:                     # NOTE: all users who will access the database must be connected to the same network
-    host = "192.168.1.24"  # Set to this according to your internet's ip address (to check the ip address, go to the terminal and type: ipconfig)
+    host = "192.168.1.45"  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
     username = "miguel"
     password = "password"
-    database = "banking_system"
+    database = "bankingoop"
 
     connection = mysql.connector.connect(
         host= host,
@@ -47,15 +53,56 @@ def continueSession(): # dedicated for looping purposes
     return 0
 
 
-def checkAcc_existence(cursor, accNumber, column): # to be used in the admin_editUser and admin_deleteUser
-  query = f"SELECT * FROM {column} WHERE accountnumber = %s" # searches the accNumber
-  cursor.execute(query, (accNumber,))
+#                                     actual primary key name         value
+def checkAcc_existence(cursor, table,        ID,                    IDcontent): # to be used in the admin_editUser and admin_deleteUser
+  query = f"SELECT * FROM {table} WHERE {ID} = %s" # searches the customerID
+  cursor.execute(query, (IDcontent,))
   account_exists = cursor.fetchone() # checks the account's existence
   return account_exists
   
 
+def displayRowsAffected(cursor, ID, IDContent):
+  print(f"\n\t{cursor.rowcount} row/s affected| {ID}: {IDContent}")
 
 
+# function for FLEXIBLE updating the query in the admin_editUser function
+def editUser_updatingQuery(connection, cursor, table, column, ID, IDcontent, value):
+  main_query = f"UPDATE {table} SET {column} = %s WHERE {ID} = %s"
+  cursor.execute(main_query, (value, IDcontent)) 
+  connection.commit() # a must
+  print(f"\n\t{cursor.rowcount} row/s affected| ID: {IDcontent}")
+  if not continueSession(): # looping
+    adminMain()
+
+
+# function for DISPLAYING single values:                 primary key       value
+def fetch_singleValues(connection, cursor, table, column,    ID,         IDcontent):
+  cursor = connection.cursor()
+  query = f"SELECT {column} FROM {table} WHERE {ID} = %s"
+  value = IDcontent
+  cursor.execute(query,(value,))
+  Result = cursor.fetchone()
+  return Result
+  
+
+# deletion query:
+def deleteQuery(connection, cursor, table, ID, IDcontent, accountExistent):
+  if accountExistent:
+    query = f"DELETE FROM {table} WHERE {ID} = %s"
+    try: 
+      cursor.execute(query, (IDcontent,))
+      connection.commit()
+      print(cursor.rowcount, "row/s deleted....", cursor.lastrowid)
+      
+    except mysql.connector.Error as error:
+      print(f"Deletion Error: {error}")
+    
+    if not continueSession():
+      adminMain()
+  
+  else:
+    print("Account Non-Existent")
+    raise ValueError("Account does not exist")
 
 
 def adminMain():
@@ -82,6 +129,10 @@ def adminMain():
       elif action == 3:
         admin_deleteUser(connection)
         break
+
+      elif action == 4:
+        # admin_addUser
+        pass
       
       else:
         print("Invalid Input")
@@ -97,68 +148,46 @@ def admin_viewUser(connection):
   
   while True:
     os.system('cls')
-    print("\n_______VIEW USERS_______\n"
-      "\t[1] Main Account\n"
-      "\t[2] Personal Info\n"
-      "\t[3] Identity Info\n"
-      "\t[4] Financial Info\n"
+    print("\n\t_______VIEW USERS_______\n\n"
+      "\t[1] Customer Information\n"
+      "\t[2] Checkings Accounts\n"
+      "\t[3] Bank Assets\n"
+      "\t[4] Transactions\n"
       "\t[5] All Records")
       
     try: 
       action = int(input("\n\tAction: "))
       
       if action == 1:
-        query = "SELECT * from customermainaccount"
+        query = "SELECT * from customer_information"
         cursor.execute(query)
         tableFormatter(cursor) # formats the data
         if not continueSession(): # returns to home if continue_session ==0
           adminMain()
            
       elif action == 2:
-        query = "SELECT * FROM userpersonalinfo"
+        query = "SELECT * FROM checkings_account"
         cursor.execute(query)
         tableFormatter(cursor)
         if not continueSession(): 
           adminMain()
 
       elif action == 3:
-        query = "SELECT * FROM useridentityinfo"
+        query = "SELECT * FROM bank_asset"
         cursor.execute(query)
         tableFormatter(cursor)
         if not continueSession(): 
           adminMain()
         
       elif action == 4:
-        query = "SELECT * FROM userfinanceinfo"
+        query = "SELECT * FROM transactions"
         cursor.execute(query)
         tableFormatter(cursor)
         if not continueSession(): 
           adminMain()
       
       elif action == 5:
-        # retrieving customer information by joining multiple tables based on foreign key references
-        # combining data from CustomerMainAccount, UserPersonalInfo, UserIdentityInfo, and UserFinanceInfo tables
-
-        # query = """
-        # SELECT 
-        #     P.CustomerID, 
-        #     C.AccountNumber, 
-        #     C.AccountType, 
-        #     P.UserFName, 
-        #     P.UserLName, 
-        #     FORMAT(C.Balance, 2) AS Balance, 
-        #     C.Status, 
-        #     I.IDNumber, 
-        #     I.IDType, 
-        #     F.Occupation, 
-        #     FORMAT(F.AnnualGrossIncome, 2) AS AnnualGrossIncome 
-        # FROM 
-        #     CustomerMainAccount AS C  
-        # JOIN UserPersonalInfo AS P ON C.CustomerID = P.CustomerID 
-        # JOIN UserIdentityInfo AS I ON C.CustomerID = I.CustomerID AND C.CustomerID = I.CustomerID 
-        # JOIN UserFinanceInfo AS F ON C.CustomerID = F.CustomerID AND I.IDNumber = F.IDNumber
-        # """
-
+        
         query = "SELECT * FROM all_records" # using a VIEW to access the JOINED statements
         cursor.execute(query)
         tableFormatter(cursor)
@@ -180,67 +209,180 @@ def admin_editUser(connection):
   while True:
     os.system('cls')
     try:
-      print("\n_______EDIT USERS_______\n"  # data/values editing would be table-based
-          "\t[1] Main Account\n"
-          "\t[2] Personal Info\n"
-          "\t[3] Identity Info\n"
-          "\t[4] Financial Info\n"
-          "\t[5] All Records")
+      print("\n\t_______EDIT USERS_______\n\n" # data/values editing would be table-based
+      "\t[1] Customer Information\n"
+      "\t[2] Checkings Accounts\n"
+      "\t[3] Bank Assets\n"
+      "\t[4] Transactions\n"
+      "\t[5] All Records")
 
       action = int(input("\n\tEdit From: "))
       
-      if action == 1: # for Main Account
-        print("\n---Main Account---")
-        accNumber = input("\n\tAccount Number (Ex. Acc001): ")
-        column = "customermainaccount"
-        account_exists = checkAcc_existence(cursor, accNumber, column)
+      if action == 1: # for Customer Information
+        print("\n---Customer Information---")
+        customerIDcontent = int(input("\n\tCustomer ID: "))
+        table = "customer_information"
+        account_exists = checkAcc_existence(cursor, table, "customer_id", customerIDcontent)
         
         
         if account_exists:  
-          print("\n\t [1] Account Type\n\t [2] Account Balance\n\t [3] Account Status\n\t") # specifying the column in the selected table
+          print("\n\t [1] Customer ID\n\t [2] Customer Password\n\t [3] First Name\n\t [4] Last Name\n\t [5] Email\n\t [6] Address\n\t [7] ID Type\n\t [8] Occupation\n\t [9] Annual Gross Income\n\t")
           attribute = int(input("Choose Account Attribute: "))
           
           if attribute == 1:
-            column = "accounttype" # both are to be passed as arguments
-            value = input(f"New Account Type (Savings | Checking): ")
-            
+            # Assuming customer_id is not something the user should update
+            print("Customer ID is not editable.")
+
           elif attribute == 2:
-            column = "balance"
-            value = Decimal(input("New Account Balance: ")) # aligned to the mysql datatype
-            
+            column = "customer_password" # both are to be passed as arguments
+            # fetching the current password
+            current_pass = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent) 
+            print(f"\t---Current Password: {current_pass}")
+            value = input("\t----New Account Password: ")
+
           elif attribute == 3:
-            column = "status"
-            value = input("New Account Status (Active | Inactive): ")
+            column = "first_name"
+            current_fname = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent) 
+            print(f"\t---Current First Name: {current_fname}")
+            value = input("\t------New Customer First Name: ")
+
+          elif attribute == 4:
+            column = "last_name"
+            current_lname = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current Last Name: {current_lname}")
+            value = input("\t------New Customer Last Name: ")
+
+          elif attribute == 5:
+            column = "email"
+            current_email = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current Email: {current_email}")
+            value = input("\t------New Customer Email: ")
+
+          elif attribute == 6:
+            column = "address"
+            current_address = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current Address: {current_address}")
+            value = input("\t------New Customer Address: ")
+
+          elif attribute == 7:
+            column = "id_type"
+            current_idType = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current ID Type: {current_idType}")
+            value = input("\t------New Customer ID Type: ")
             
+          elif attribute == 8:
+            column = "occupation"
+            current_occupation = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current Occupation: {current_occupation}")
+            value = input("\t------New Customer Occupation: ")
+
+          elif attribute == 9:
+            column = "annual_gross_income"
+            current_annGrossIncome = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent)
+            print(f"\t---Current Annual Gross Income: {current_annGrossIncome}")
+            value = input("\t------New Customer Annual Gross Income: ")
+
           else:
-            print("Invalid attribute choice")
+            print("Invalid choice. Please choose a valid attribute (1-9).")
             return
-        
-          main_query = f"UPDATE customermainaccount SET {column} = %s WHERE accountnumber = %s"
-          cursor.execute(main_query, (value, accNumber)) 
-          connection.commit() # a must
-          print(cursor.rowcount, "updated...", f"ID: {accNumber}")
           
-          if not continueSession(): # looping
-            adminMain()
+          editUser_updatingQuery(connection, cursor, table, column, "customer_id" , customerIDcontent, value) # using customerID as ID 
+
+
+           
+      elif action == 2: # [2] Checkings Account
+        print("\n---Customer Checkings Account---")
+        checkingsIDcontent = int(input("\n\tCheckings ID: "))
+        table = "checkings_account"
+        account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
         
+        if account_exists:
+          print("\n\t[1] Balance\n")
+          attribute = int(input("\tChoose Account Attribute: "))
+          
+          if attribute == 1:
+            column = "balance"
+            currentBal = fetch_singleValues(connection, cursor, table, column, "checkings_id",checkingsIDcontent) # fetching the current balance based on the given parameters
+            print(f"\n\t---Current Balance: {currentBal}")
+    
+            new_balance = Decimal(input("\n\t\t---New Balance: "))
+          
+          else:
+            print("Invalid Account Attribute")
+            return
+          
+          editUser_updatingQuery(connection, cursor, table, column, "checkings_id" , checkingsIDcontent, new_balance)
+          
+          
+      
+      elif action == 3: # [3] Bank Asset
+        print("\n---Customer Bank Asset---")
+        bankAsset_ID = int(input("Bank Asset ID: "))
+        table = "bank_asset"
+        account_exists = checkAcc_existence(cursor, table, "asset_id", bankAsset_ID)
+
+        if account_exists:
+          print("\n\t[1] Checkings Balance\n")
+          attribute = int(input("\tChoose Account Attribute: "))
+
+          if attribute == 1:
+            column = "checkings_balance"
+            current_checkingsBal = fetch_singleValues(connection, cursor, table, column, "asset_id", bankAsset_ID)
+            print(f"\n\t--Current Checkings Balance: {current_checkingsBal}")
+            new_checkingsBal = Decimal(input("New Checkings Balance: "))
+          
+          else:
+            print("Account Attribute Non-existent")
+            return
+
+          editUser_updatingQuery(connection, cursor, table, column, "asset_id", bankAsset_ID, new_checkingsBal)
+          
+
+      
+      elif action == 4: # [4] Transactions
+        print("\n\t---User Transactions")
+        table = "transactions"
+        transactionID_content = int(input("\n\tTransaction ID: "))
+        account_exists = checkAcc_existence(cursor, table, "transactions_id", transactionID_content)
+
+        if account_exists:
+          print("\n\t[1] Transaction Date\n\t[2] Amount\n\t[3] Transaction Type\n")
+          attribute = int(input("Choose Account Attribute: "))
+
+          if attribute == 1:
+            column = "transaction_date"
+            current_transacDate = fetch_singleValues(connection, cursor, table, column, "transactions_id", transactionID_content)
+            print(f"\n\t---Current Transaction Date: {current_transacDate}")
+            year = input("\n\t----Enter the year (YYYY): ")
+            month = input("\n\t----Enter the month (MMMM): ")
+            day = input("\n\t----Enter the day (DDDD): ")
+            
+            date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"  # Ensure two-digit month and day
+            value = datetime.strptime(date_str, "%Y-%m-%d").date() # converting into date format
+          
+          elif attribute == 2:
+            column = "amount"
+            currentAmount = fetch_singleValues(connection, cursor, table, column, "transactions_id", transactionID_content)
+            print(f"Current Transaction Amount: {currentAmount}")
+            value = Decimal(input("New Transaction Amount: "))
+
+          elif attribute == 3:
+            column = "transaction_type"
+            current_transacType = fetch_singleValues(connection, cursor, table, column, "transactions_id", transactionID_content)
+            print(f"Current Transaction Type: {current_transacType}")
+            value = input("New Transaction Type: ")
+
+          else:
+            print("Invalid Input")
+            return
+
+          editUser_updatingQuery(connection, cursor, table, column, "transactions_id", transactionID_content, value)
         
-      elif action == 2: # Personal Info
-        pass # same approach, won't specify it further since this is just a sample
-      
-      elif action == 3: # Identity Info
-        pass
-      
-      elif action == 4: # Financial
-        pass
-      
-      elif action == 5: # All Records
-        pass
       
     except ValueError as error:
       print(f"Invalid Input: {error}")
     
-        
+
         
 def admin_deleteUser(connection):
   os.system('cls')
@@ -248,51 +390,188 @@ def admin_deleteUser(connection):
   while True:
     os.system('cls')
     try:
-      print("\n_______DELETE USERS_______\n"  # 
-          "\t[1] Main Account\n"
-          "\t[2] Personal Info\n"
-          "\t[3] Identity Info\n"
-          "\t[4] Financial Info\n"
-          "\t[5] All Records")
+      print("\n\t_______DELETE USERS_______\n\n" 
+      "\t[1] Customer Information\n"
+      "\t[2] Checkings Accounts\n"
+      "\t[3] Bank Assets\n"
+      "\t[4] Transactions\n")
       
       action = int(input("\n\tDelete From: "))
       
-      if action == 1: # Main Axxount
-        accNumber = input("\n\tAccount Number (Ex. Acc001): ")
-        column = "customermainaccount"
-        account_exists = checkAcc_existence(cursor, accNumber, column)
+      if action == 1: # [1] Customer Information
+        customerIDcontent = int(input("\n\tCustomer ID: "))
+        table = "customer_information"
+        account_exists = checkAcc_existence(cursor, table, "customer_id", customerIDcontent)
+        confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
         
-        
-        if account_exists:
-          query = "DELETE FROM customermainaccount WHERE accountnumber = %s"
+        # NOTE: Foreign key constraints maintain referential integrity, ensuring that a user can only be deleted
+        # IF AND ONLY IF its references in related tables have been addressed appropriately.
+
+        if account_exists and confirmDeletion == 1:
           try: 
-            cursor.execute(query, (accNumber,))
+            cursor.execute("SET foreign_key_checks = 0") # disabling foreign key checks temporarily
+            
+            # delete records to NOTE: Child Tables
+            delete_transactions_query = "DELETE FROM transactions WHERE checkings_id IN (SELECT checkings_id FROM checkings_account WHERE customer_id = %s)"
+            cursor.execute(delete_transactions_query, (customerIDcontent,))
+            
+            delete_bank_asset_query = "DELETE FROM bank_asset WHERE checkings_id IN (SELECT checkings_id FROM checkings_account WHERE customer_id = %s)"
+            cursor.execute(delete_bank_asset_query, (customerIDcontent,))
+
+            delete_checkings_account_query = "DELETE FROM checkings_account WHERE customer_id = %s"
+            cursor.execute(delete_checkings_account_query, (customerIDcontent,))
+            
+            # delete record to NOTE: Parent Table
+            delete_customer_query = "DELETE FROM customer_information WHERE customer_id = %s"
+            cursor.execute(delete_customer_query, (customerIDcontent,))
             connection.commit()
-            print(cursor.rowcount, "row/s deleted....", cursor.lastrowid)
+            displayRowsAffected(cursor, "Customer ID", customerIDcontent)
+
+          except mysql.connector.Error as error:
+            print(f"Error: {error}")
+            
+          finally:
+            cursor.execute("SET foreign_key_checks = 1") # enabling foreign key checks
+        
+        else:
+          print(f"Account {customerIDcontent} is non-existent...")
+          
+        if not continueSession():
+          adminMain()
+          
+          
+      elif action == 2: # [2] Checkings Accounts
+        checkingsIDcontent = int(input("\n\tCheckings Account ID: "))
+        table = "checkings_account"
+        account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
+        confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
+        
+        if account_exists and confirmDeletion == 1:
+          try:
+            cursor.execute("SET foreign_key_checks = 0")
+            
+            # deleting the NOTE: Child Tables
+            delete_transactions_query = "DELETE FROM transactions WHERE checkings_id = %s"
+            cursor.execute(delete_transactions_query,(checkingsIDcontent,))
+
+            delete_bank_asset_query = "DELETE FROM bank_asset WHERE checkings_id = %s"
+            cursor.execute(delete_bank_asset_query,(checkingsIDcontent,))
+
+            # deleting the NOTE: Parent Table
+            delete_checkings_account_query = "DELETE FROM checkings_account WHERE checkings_id = %s"
+            cursor.execute(delete_checkings_account_query,(checkingsIDcontent,))
+            connection.commit()
+            displayRowsAffected(cursor, "Checkings ID", checkingsIDcontent)
             
           except mysql.connector.Error as error:
-            print(f"Deletion Error: {error}")
-          
-          if not continueSession():
-            adminMain()
-            
-        else:
-         print("Account does not exist.")
-          
-      elif action == 2: # Personal Info
-        pass # same concept/approach
+            print(f"Error: {error}")
+
+          finally:
+            cursor.execute("SET foreign_key_checks = 1")
       
-      elif action == 3: # Identity Info
-        pass
+        else:
+          print(f"Account {checkingsIDcontent} is non-existent...")
+          
+        if not continueSession():
+          adminMain()
 
-      elif action == 4: # Financial Info
-        pass
 
-      elif action == 5: # All Records
-        pass
+      elif action == 3: # [3] Bank Assets
+        assetIDcontent = int(input("\n\tCheckings Account ID: "))
+        table = "bank_asset"
+        account_exists = checkAcc_existence(cursor, table, "asset_id", assetIDcontent)
+        confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
+        
+        if account_exists and confirmDeletion == 1:
+          try:
+            cursor.execute("SET foreign_key_checks = 0")
+            
+            delete_bank_asset_query = "DELETE FROM bank_asset WHERE asset_id = %s"
+            cursor.execute(delete_bank_asset_query,(assetIDcontent,))
+            connection.commit()
+            displayRowsAffected(cursor, "Asset ID", assetIDcontent)
+            
+          except mysql.connector.Error as error:
+            print(f"Error: {error}")
+            
+
+          finally:
+            cursor.execute("SET foreign_key_checks = 1")
+
+        else:
+          print(f"Account {assetIDcontent} is non-existent...")
+        
+        if not continueSession():
+          adminMain()
+
+
+      elif action == 4: # [4] Transactions
+        transactionID_content = int(input("\n\tCustomer ID: "))
+        table = "transactions"
+        account_exists = checkAcc_existence(cursor, table, "transactions_id", transactionID_content)
+        confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
+        
+        if account_exists and confirmDeletion == 1:
+          try:
+            cursor.execute("SET foreign_key_checks = 0")
+            
+            delete_transactions_query = "DELETE FROM transactions WHERE transactions_id = %s"
+            cursor.execute(delete_transactions_query,(transactionID_content,))
+            connection.commit()
+            displayRowsAffected(cursor, "Transaction ID", transactionID_content)
+
+          except mysql.connector.Error as error:
+            print(f"Error: {error}")
+          
+          finally:
+            cursor.execute("SET foreign_key_checks = 1")
+
+        else:
+          print(f"Account {transactionID_content} is non-existent...")
+        
+        if not continueSession():
+          adminMain()
+        
 
     except ValueError as error:
       print(f"Invalid Input....{error}")
+
+
+
+
+
+
+# TO FINISH
+
+
+def admin_addUser(connection):
+  cursor = connection.cursor()
+  # customer_id (PK) AUTO-GENERATED/INCREMENT?
+  # customer_password
+  # first_name
+  # last_name
+  # email
+  # address
+  # id_type
+  # occupation
+  # annual_gross_income
+  
+  cust_fname = input("First Name: ")
+  cust_lname = input("Last Name: ")
+  cust_email = input("Email: ")
+  cust_address = input("Address: ")
+  cust_idType = input("ID Type: ")
+  cust_occupation = input("Occupation: ")
+  cust_annGrossIncome = Decimal(input("Annual Gross Income: "))
+
+  query = f"INSERT INTO customer_information (first_name, last_name, email, address, id_type, occupation, annual_gross_income) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+  values = (cust_fname, cust_lname, cust_email, cust_address, cust_idType, cust_occupation, cust_annGrossIncome)
+
+  cursor.execute(query, values)
+  connection.commit()
+
+
+
 
 
 
