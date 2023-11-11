@@ -5,15 +5,10 @@ from tabulate import tabulate # for precise (& effortless lol) tables & columns 
 from datetime import datetime
 
 
-# NOTE: to finish (bukas ko gawin pagod na q)
-#       1. Add User 
-#       2. Adapt Customer Functionalities to the "bankingoop" -- dinuplicate ko kase database ni paul 
-
-
 def connectDatabase():
   connection = None
   try:                     # NOTE: all users who will access the database must be connected to the same network
-    host = "192.168.1.45"  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
+    host = " 192.168.1.6"  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
     username = "miguel"
     password = "password"
     database = "bankingoop"
@@ -45,13 +40,19 @@ def tableFormatter(cursor): # using the tabulate library
       print("No records found.")
   
   
+# SELECT/VIEW Queries
+def selectAll_query(cursor, table):
+  query = f"SELECT * FROM {table}"
+  cursor.execute(query)
+  tableFormatter(cursor)
+  
+  
 def continueSession(): # dedicated for looping purposes
   continue_session = int(input("\nContinue Session (1 | 0): "))
   if continue_session == 1:
     return 1
   else:
     return 0
-
 
 #                                     actual primary key name         value
 def checkAcc_existence(cursor, table,        ID,                    IDcontent): # to be used in the admin_editUser and admin_deleteUser
@@ -62,47 +63,56 @@ def checkAcc_existence(cursor, table,        ID,                    IDcontent): 
   
 
 def displayRowsAffected(cursor, ID, IDContent):
-  print(f"\n\t{cursor.rowcount} row/s affected| {ID}: {IDContent}")
+  print(f"\n\t{cursor.rowcount} session initiated| {ID}: {IDContent}")
 
 
 # function for FLEXIBLE updating the query in the admin_editUser function
 def editUser_updatingQuery(connection, cursor, table, column, ID, IDcontent, value):
-  main_query = f"UPDATE {table} SET {column} = %s WHERE {ID} = %s"
-  cursor.execute(main_query, (value, IDcontent)) 
-  connection.commit() # a must
-  print(f"\n\t{cursor.rowcount} row/s affected| ID: {IDcontent}")
-  if not continueSession(): # looping
-    adminMain()
+  try:
+    main_query = f"UPDATE {table} SET {column} = %s WHERE {ID} = %s"
+    cursor.execute(main_query, (value, IDcontent)) 
+    connection.commit() # a must
+    # print(f"\n\t{cursor.rowcount} row/s affected| ID: {IDcontent}")
+    displayRowsAffected(cursor, ID, IDcontent)
+    
+  except mysql.connector.Error:
+    print("Session Error")
+    if not continueSession():
+      return
+  
 
 
 # function for DISPLAYING single values:                 primary key       value
 def fetch_singleValues(connection, cursor, table, column,    ID,         IDcontent):
-  cursor = connection.cursor()
-  query = f"SELECT {column} FROM {table} WHERE {ID} = %s"
-  value = IDcontent
-  cursor.execute(query,(value,))
-  Result = cursor.fetchone()
-  return Result
+  try:
+    cursor = connection.cursor()
+    query = f"SELECT {column} FROM {table} WHERE {ID} = %s"
+    value = IDcontent
+    cursor.execute(query,(value,))
+    Result = cursor.fetchone()
+    return Result[0]
+  
+  except mysql.connector.Error:
+    print("Session Error")
+    if not continueSession():
+      return
   
 
-# deletion query:
-def deleteQuery(connection, cursor, table, ID, IDcontent, accountExistent):
-  if accountExistent:
-    query = f"DELETE FROM {table} WHERE {ID} = %s"
-    try: 
-      cursor.execute(query, (IDcontent,))
-      connection.commit()
-      print(cursor.rowcount, "row/s deleted....", cursor.lastrowid)
-      
-    except mysql.connector.Error as error:
-      print(f"Deletion Error: {error}")
-    
-    if not continueSession():
-      adminMain()
+def input_date(description):
+  try:
+    year = input(f"\n\t---- {description} Year (YYYY): ")
+    month = input(f"\n\t---- {description} Month (MM): ")
+    day = input(f"\n\t---- {description} Day(DD): ")
   
-  else:
-    print("Account Non-Existent")
-    raise ValueError("Account does not exist")
+    date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"  # ensure two-digit month and day
+    transaction_date = datetime.strptime(date_str, "%Y-%m-%d").date() # converting into date format
+
+  except ValueError as error:
+    print(f"Invalid Input: {error}")
+  
+  return transaction_date
+
+
 
 
 def adminMain():
@@ -114,7 +124,8 @@ def adminMain():
       print("\n_______ADMIN AUTHORIZED_______\n"
       "\t[1] View Users\n"
       "\t[2] Edit Users\n"
-      "\t[3] Delete Users")
+      "\t[3] Delete Users\n"
+      "\t[4] Add Users")
       
       action = int(input("\n\tAction: "))
       
@@ -131,7 +142,7 @@ def adminMain():
         break
 
       elif action == 4:
-        # admin_addUser
+        admin_addUser(connection)
         pass
       
       else:
@@ -158,50 +169,32 @@ def admin_viewUser(connection):
     try: 
       action = int(input("\n\tAction: "))
       
-      if action == 1:
-        query = "SELECT * from customer_information"
-        cursor.execute(query)
-        tableFormatter(cursor) # formats the data
-        if not continueSession(): # returns to home if continue_session ==0
-          adminMain()
+      if action == 1:  # [1] Customer Information: table name as the parameter
+        selectAll_query(cursor, "customer_information") 
            
-      elif action == 2:
-        query = "SELECT * FROM checkings_account"
-        cursor.execute(query)
-        tableFormatter(cursor)
-        if not continueSession(): 
-          adminMain()
+      elif action == 2: # [2] Checkings Accounts
+        selectAll_query(cursor, "checkings_account")
 
-      elif action == 3:
-        query = "SELECT * FROM bank_asset"
-        cursor.execute(query)
-        tableFormatter(cursor)
-        if not continueSession(): 
-          adminMain()
+      elif action == 3: # [3] Bank Assets
+        selectAll_query(cursor, "bank_asset")
         
-      elif action == 4:
-        query = "SELECT * FROM transactions"
-        cursor.execute(query)
-        tableFormatter(cursor)
-        if not continueSession(): 
-          adminMain()
+      elif action == 4: # [4] Transactions
+        selectAll_query(cursor, "transactions")
       
-      elif action == 5:
-        
-        query = "SELECT * FROM all_records" # using a VIEW to access the JOINED statements
-        cursor.execute(query)
-        tableFormatter(cursor)
-        if not continueSession(): 
-          adminMain()
+      elif action == 5: # [5] All Records NOTE: the "all_records" is a view used to JOIN all information the tables
+        selectAll_query(cursor, "all_records")
      
       else:
         print("Invalid Input...")
+      
+      if not continueSession(): # returns to main menu if false
+          adminMain()
         
     except ValueError as error:
       print("\n\tValue Error: ", error)
-  
-  
 
+    
+  
 def admin_editUser(connection):
   os.system('cls')
   cursor = connection.cursor()
@@ -213,15 +206,15 @@ def admin_editUser(connection):
       "\t[1] Customer Information\n"
       "\t[2] Checkings Accounts\n"
       "\t[3] Bank Assets\n"
-      "\t[4] Transactions\n"
-      "\t[5] All Records")
+      "\t[4] Transactions\n")
 
       action = int(input("\n\tEdit From: "))
       
       if action == 1: # for Customer Information
         print("\n---Customer Information---")
-        customerIDcontent = int(input("\n\tCustomer ID: "))
         table = "customer_information"
+        selectAll_query(cursor, table) # displays all customer info
+        customerIDcontent = int(input("\n\n\tCustomer ID: "))
         account_exists = checkAcc_existence(cursor, table, "customer_id", customerIDcontent)
         
         
@@ -230,14 +223,13 @@ def admin_editUser(connection):
           attribute = int(input("Choose Account Attribute: "))
           
           if attribute == 1:
-            # Assuming customer_id is not something the user should update
+            # Assuming customer_id is not something the admin should update
             print("Customer ID is not editable.")
 
           elif attribute == 2:
             column = "customer_password" # both are to be passed as arguments
-            # fetching the current password
-            current_pass = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent) 
-            print(f"\t---Current Password: {current_pass}")
+            current_pass = fetch_singleValues(connection, cursor, table, column, "customer_id", customerIDcontent) # fetching the current password
+            print(f"\t---Customer {customerIDcontent} Current Password: {current_pass}")
             value = input("\t----New Account Password: ")
 
           elif attribute == 3:
@@ -292,8 +284,9 @@ def admin_editUser(connection):
            
       elif action == 2: # [2] Checkings Account
         print("\n---Customer Checkings Account---")
-        checkingsIDcontent = int(input("\n\tCheckings ID: "))
         table = "checkings_account"
+        selectAll_query(cursor, table) # displays all checkings account info
+        checkingsIDcontent = int(input("\n\n\tCheckings ID: "))
         account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
         
         if account_exists:
@@ -317,8 +310,9 @@ def admin_editUser(connection):
       
       elif action == 3: # [3] Bank Asset
         print("\n---Customer Bank Asset---")
-        bankAsset_ID = int(input("Bank Asset ID: "))
         table = "bank_asset"
+        selectAll_query(cursor, table) # displays all bank asset info
+        bankAsset_ID = int(input("Bank Asset ID: "))
         account_exists = checkAcc_existence(cursor, table, "asset_id", bankAsset_ID)
 
         if account_exists:
@@ -329,7 +323,7 @@ def admin_editUser(connection):
             column = "checkings_balance"
             current_checkingsBal = fetch_singleValues(connection, cursor, table, column, "asset_id", bankAsset_ID)
             print(f"\n\t--Current Checkings Balance: {current_checkingsBal}")
-            new_checkingsBal = Decimal(input("New Checkings Balance: "))
+            new_checkingsBal = Decimal(input("\n\t---New Checkings Balance: "))
           
           else:
             print("Account Attribute Non-existent")
@@ -342,6 +336,7 @@ def admin_editUser(connection):
       elif action == 4: # [4] Transactions
         print("\n\t---User Transactions")
         table = "transactions"
+        selectAll_query(cursor, table) # displays all transactions info
         transactionID_content = int(input("\n\tTransaction ID: "))
         account_exists = checkAcc_existence(cursor, table, "transactions_id", transactionID_content)
 
@@ -353,12 +348,8 @@ def admin_editUser(connection):
             column = "transaction_date"
             current_transacDate = fetch_singleValues(connection, cursor, table, column, "transactions_id", transactionID_content)
             print(f"\n\t---Current Transaction Date: {current_transacDate}")
-            year = input("\n\t----Enter the year (YYYY): ")
-            month = input("\n\t----Enter the month (MMMM): ")
-            day = input("\n\t----Enter the day (DDDD): ")
+            value = input_date("Transaction") # invoking the function for date inputs
             
-            date_str = f"{year}-{month.zfill(2)}-{day.zfill(2)}"  # Ensure two-digit month and day
-            value = datetime.strptime(date_str, "%Y-%m-%d").date() # converting into date format
           
           elif attribute == 2:
             column = "amount"
@@ -377,7 +368,9 @@ def admin_editUser(connection):
             return
 
           editUser_updatingQuery(connection, cursor, table, column, "transactions_id", transactionID_content, value)
-        
+      
+      if not continueSession(): # looping
+        adminMain()
       
     except ValueError as error:
       print(f"Invalid Input: {error}")
@@ -399,17 +392,18 @@ def admin_deleteUser(connection):
       action = int(input("\n\tDelete From: "))
       
       if action == 1: # [1] Customer Information
-        customerIDcontent = int(input("\n\tCustomer ID: "))
         table = "customer_information"
+        selectAll_query(cursor, table) 
+        customerIDcontent = int(input("\n\tCustomer ID: "))
         account_exists = checkAcc_existence(cursor, table, "customer_id", customerIDcontent)
         confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
         
         # NOTE: Foreign key constraints maintain referential integrity, ensuring that a user can only be deleted
-        # IF AND ONLY IF its references in related tables have been addressed appropriately.
+        # IF AND ONLY IF its references in related tables have been deleted
 
         if account_exists and confirmDeletion == 1:
           try: 
-            cursor.execute("SET foreign_key_checks = 0") # disabling foreign key checks temporarily
+            cursor.execute("SET foreign_key_checks = 0") # disabling foreign key checks temporarily to avoid violating foreign key constraints.
             
             # delete records to NOTE: Child Tables
             delete_transactions_query = "DELETE FROM transactions WHERE checkings_id IN (SELECT checkings_id FROM checkings_account WHERE customer_id = %s)"
@@ -441,8 +435,9 @@ def admin_deleteUser(connection):
           
           
       elif action == 2: # [2] Checkings Accounts
-        checkingsIDcontent = int(input("\n\tCheckings Account ID: "))
         table = "checkings_account"
+        selectAll_query(cursor, table) 
+        checkingsIDcontent = int(input("\n\tCheckings Account ID: "))
         account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
         confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
         
@@ -477,8 +472,9 @@ def admin_deleteUser(connection):
 
 
       elif action == 3: # [3] Bank Assets
-        assetIDcontent = int(input("\n\tCheckings Account ID: "))
         table = "bank_asset"
+        selectAll_query(cursor, table) 
+        assetIDcontent = int(input("\n\tAsset Account ID: "))
         account_exists = checkAcc_existence(cursor, table, "asset_id", assetIDcontent)
         confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
         
@@ -506,8 +502,9 @@ def admin_deleteUser(connection):
 
 
       elif action == 4: # [4] Transactions
-        transactionID_content = int(input("\n\tCustomer ID: "))
         table = "transactions"
+        selectAll_query(cursor, table) 
+        transactionID_content = int(input("\n\tTransaction ID: "))
         account_exists = checkAcc_existence(cursor, table, "transactions_id", transactionID_content)
         confirmDeletion = int(input("\n\t-CONFIRM Deletion? |1|: "))
         
@@ -538,239 +535,178 @@ def admin_deleteUser(connection):
 
 
 
-
-
-
-# TO FINISH
-
-
 def admin_addUser(connection):
   cursor = connection.cursor()
-  # customer_id (PK) AUTO-GENERATED/INCREMENT?
-  # customer_password
-  # first_name
-  # last_name
-  # email
-  # address
-  # id_type
-  # occupation
-  # annual_gross_income
   
-  cust_fname = input("First Name: ")
-  cust_lname = input("Last Name: ")
-  cust_email = input("Email: ")
-  cust_address = input("Address: ")
-  cust_idType = input("ID Type: ")
-  cust_occupation = input("Occupation: ")
-  cust_annGrossIncome = Decimal(input("Annual Gross Income: "))
-
-  query = f"INSERT INTO customer_information (first_name, last_name, email, address, id_type, occupation, annual_gross_income) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-  values = (cust_fname, cust_lname, cust_email, cust_address, cust_idType, cust_occupation, cust_annGrossIncome)
-
-  cursor.execute(query, values)
-  connection.commit()
-
-
-
-
-
-
-def checkCosAcc_existence(cursor, accnum): #only checks account number, may need password, non case sensitive
-  query = f"SELECT * FROM customermainaccount WHERE AccountNumber = %s"
-  cursor.execute(query, (accnum,))
-  account_exists = cursor.fetchone()
-  return account_exists
-
-
-def customerWith(connection, accnum):
-  os.system('cls')
-  cursor = connection.cursor()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-
   while True:
-    while True:
-      try:
+    os.system('cls')
+    print("\n\t_______ADD USERS_______\n\n"
+      "\t[1] Customer Information\n"
+      "\t[2] Checkings Accounts\n"
+      "\t[3] Bank Assets\n"
+      "\t[4] Transactions\n")
+
+    action = int(input("Add User To: "))
+
+    
+    if action == 1: # [1] Customer Information
+      while True:
         os.system('cls')
-        print("\n\t___________________________\n"
-            f"\n\tYour cerrent balance is {Balance:.2f}\n")
-        amount = int(input("\tEnter the amount you want to withdraw: "))
+        print("\n\t---Add New Customer Information---\n")
+        
+        try:
+          cust_fname = input("\t\tFirst Name: ")
+          cust_lname = input("\t\tLast Name: ")
+          cust_email = input("\t\tEmail: ")
+          cust_address = input("\t\tAddress: ")
+          cust_idType = input("\t\tID Type: ")
+          cust_occupation = input("\t\tOccupation: ")
+          cust_annGrossIncome = Decimal(input("\t\tAnnual Gross Income: "))
+          
+          query = f"INSERT INTO customer_information (first_name, last_name, email, address, id_type, occupation, annual_gross_income) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+          values = (cust_fname, cust_lname, cust_email, cust_address, cust_idType, cust_occupation, cust_annGrossIncome)
+
+          cursor.execute(query, values)
+          connection.commit()
+          displayRowsAffected(cursor, "customer_id", cursor.lastrowid)
+          
+        except ValueError as error:
+          print(f"\t\tInvalid Input: {error}")
+          
         break
+      
+      
+    elif action == 2: # [2] Checkings Accounts
+      table = "customer_information" # to check if the account is existent, NOTE that the customer_id MUST exist first in the PARENT TABLE(customer_info) because it is referenced as a foreign key to the CHILD TABLE(checkings_account)
+      while True:
+        os.system('cls')
+        print("\n\t---Add New Checkings Account Info---\n")
+        selectAll_query(cursor, table)
+        
+        try:
+          customerIDcontent = int(input("\t\tCustomer ID: "))
+          account_exists = checkAcc_existence(cursor, table, "customer_id", customerIDcontent )
+          if account_exists:
+            balance = Decimal(input(f"\t\tCustomer {customerIDcontent} Account Balance: "))
+            query = "INSERT INTO checkings_account (customer_id, balance) VALUES(%s, %s)"
+            values = (customerIDcontent, balance)
+            
+            cursor.execute(query, values)
+            connection.commit()
+            displayRowsAffected(cursor, "checkings_id", cursor.lastrowid)
+          
+          else:
+            print(f"Customer {customerIDcontent} is non-existent...")
+        
+        except mysql.connector.Error as error:
+          print(f"Error: {error}")
+        
+        break
+
+        
+    elif action == 3: # [3] Bank Assets
+      table = "checkings_account" # NOTE: because the bank_asset table has a foreign key reference to the checkings_account table
+      while True:
+        os.system('cls')
+        print("\n\t---Add New Bank Asset Info---\n")
+        selectAll_query(cursor, table)
+        
+        try:
+          checkingsIDcontent = int(input("\t\tCheckings ID: "))
+          account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
+
+          if account_exists:
+            checkings_balance = Decimal(input(f"\t\tChecking Account {checkingsIDcontent} Balance: "))
+            query = "INSERT INTO bank_asset(checkings_id, checkings_balance) VALUES(%s, %s)"
+            values = (checkingsIDcontent, checkings_balance)
+            
+            cursor.execute(query, values)
+            connection.commit()
+            displayRowsAffected(cursor, "asset_id", cursor.lastrowid)
+          
+          else:
+            print(f"Account {checkingsIDcontent} is non-existent...")
+        
+        except mysql.connector.Error as error:
+          print(f"Error: {error}")
+        
+        break
+        
+        
+    elif action == 4: # [4] Transactions
+      table = "checkings_account" # NOTE: because the transactions table has a foreign key reference to the checkings_account table
+      while True:
+        os.system('cls')
+        print("\n\t---Add New Transaction Information---\n")
+        selectAll_query(cursor, table)
+        
+        try:
+          checkingsIDcontent = int(input("\t\tCheckings ID: "))
+          account_exists = checkAcc_existence(cursor, table, "checkings_id", checkingsIDcontent)
+          
+          if account_exists:
+            # transaction date
+            transaction_date = input_date("Transaction")
+            amount = Decimal(input(f"\n\t---- Checkings Account {checkingsIDcontent} Amount: "))
+            transaction_type = input("\t\tTransaction Type: ")
+            
+            query = "INSERT INTO transactions(checkings_id, transaction_date, amount, transaction_type) VALUES (%s, %s, %s, %s)"
+            values = (checkingsIDcontent, transaction_date, amount, transaction_type)
+            
+            cursor.execute(query, values)
+            connection.commit()
+            displayRowsAffected(cursor, "transactions_id", cursor.lastrowid)
+
+          else:
+            print(f"Checkings Account {checkingsIDcontent} is non-existent...")
+        
+        except mysql.connector.Error as error:
+          print(f"Error: {error}")
+        
+        break
+
+
+    else:
+      continue
+    
+    if not continueSession():
+      adminMain()
+  
+  
+  
+  
+# Reusable functions for customer withdrawal | deposit | transfer
+def customerSession(Balance, sessionType):
+  while True:
+    os.system('cls')
+    try:
+      print("\n\t___________________________\n" f"\n\tYour current balance is: {Balance}\n")
+      
+      # Get withdrawal | deposit | transfer amount from user
+      session_amount_input = input(f"\tEnter the amount you want to {sessionType}: ")
+      
+      try:
+        session_amount = Decimal(session_amount_input)  # convert the input to a Decimal
+        break
+        
       except ValueError:
         os.system('cls')
-        print("\n\t___________________________\n"
-              "\n\tError, please enter a valid integer")
-        if not continueSession():
-          return
-      
-    if amount <= Balance:
-      os.system('cls')
-      print(f"\n\tThe amount you want to withdraw is {amount}...\n")
-      newbal = Balance - amount
-      query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
-      cursor.execute(query, (newbal, accnum))
-      connection.commit()
+        print("\n\t___________________________\n" "\n\tError, please enter a valid decimal value")
+        continue
 
-      query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-      cursor.execute(query,(accnum,))
-      result = cursor.fetchone()
-      Balance = result[0]
+    except Exception as e:
+      os.system('cls')
+      print(f"\n\t___________________________\n" f"\n\tError: {e}")
+      continue
     
-      print("\n\t___________________________\n"
-            f"\n\tTransaction completed successfully, your new balance is {newbal:.2f}.")
-      input("\tPress Enter to Return to Customer Home Page...")
-      break
-
-    elif amount > Balance:
-      os.system('cls')
-      print(f"\n\t___________________________\n"
-            "\n\tThe amount you want to withdraw exceeds your current balnce")
-      if not continueSession():
-          break
+  return session_amount
 
 
-def customerDpst(connection, accnum):
-  os.system('cls')
-  cursor = connection.cursor()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-
-  while True:
-    try:
-      os.system('cls')
-      print("\n\t___________________________\n"
-          f"\n\tYour cerrent balance is {Balance:.2f}\n")
-      amount = int(input("\tEnter the amount you want to deposit: "))
-      break
-    except ValueError:
-        os.system('cls')
-        print("\n\t___________________________\n"
-              "\n\tError, please enter a valid integer")
-        if not continueSession():
-          return
-    
-  os.system('cls')
-  print(f"\n\tThe amount you want to deposit is {amount}...\n")
-  newbal = Balance + amount
-  query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
-  cursor.execute(query, (newbal, accnum))
-  connection.commit()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-
+def displayTransaction_status(newBalance):
   print("\n\t___________________________\n"
-        f"\n\tTransaction completed successfully, your new balance is {newbal:.2f}.")
+            f"\n\tTransaction completed successfully, your new balance is {newBalance}.")
   input("\tPress Enter to Return to Customer Home Page...")
 
-
-def customerTrans(connection, accnum):
-  os.system('cls')
-  cursor = connection.cursor()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-  
-  while True: #Checks all possible errors first before proceeding, loops back at any point whenever it encounters an error.
-    try:
-      os.system('cls')
-      print("\n\t___________________________\n"
-          f"\n\tYour cerrent balance is {Balance:.2f}\n")
-      amount = int(input("\n\tEnter the amount you want to transfer: "))
-      if Balance >= amount:
-
-        while True:
-          try:
-            targaccnum = str(input("\tEnter the Account Number of the account to transfer to: "))
-            account_exist = checkCosAcc_existence(cursor, targaccnum)
-  
-            if account_exist and targaccnum!=accnum:
-              break
-            elif account_exist and targaccnum==accnum:
-              os.system('cls')
-              print(f"\n\t___________________________\n"
-                    f"\n\tInvalid Account Number..."
-                    f"\n\tYou Entered your own Account Number which is invalid...")
-              if not continueSession():
-                return
-              break
-            else:
-              os.system('cls')
-              print(f"\n\t___________________________\n"
-                    f"\n\tInvalid Account Number...")
-              if not continueSession():
-                return
-              break
-          except ValueError:
-              os.system('cls')
-              print(f"\n\t___________________________\n"
-                    f"\n\tError, please enter a valid Account Number")
-              if not continueSession():
-                return
-              
-        if account_exist and targaccnum!=accnum:
-          break
-      
-      elif Balance < amount:
-        os.system('cls')
-        print(f"\n\t___________________________\n"
-              f"\n\tYou do not have the necessary funds to transfer that amount...")
-        if not continueSession():
-                return
-    except ValueError:
-        os.system('cls')
-        print("\n\t___________________________\n"
-              "\n\tError, please enter a valid integer")
-        if not continueSession():
-          return
-
-  #Transferring Amount from Source to Target
-  newbalsrc = Balance - amount #Minuses amount from source
-  query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
-  cursor.execute(query, (newbalsrc, accnum))
-  connection.commit()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s" #Captures Target Balance
-  cursor.execute(query,(targaccnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-
-  newbaltarg = Balance + amount #Adds amount to target
-  query = "UPDATE customermainaccount SET Balance = %s where AccountNumber = %s"
-  cursor.execute(query, (newbaltarg, targaccnum))
-  connection.commit()
-
-  os.system('cls')
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-  print("\n\t___________________________\n"
-        f"\n\tTransaction completed successfully, your new balance is {newbalsrc:.2f}.")
-  input("\tPress Enter to Return to Customer Home Page...")
-
-
-def customerBal(connection, accnum):
-  os.system('cls')
-  cursor = connection.cursor()
-
-  query = "SELECT Balance from customermainaccount where AccountNumber = %s"
-  cursor.execute(query,(accnum,))
-  result = cursor.fetchone()
-  Balance = result[0]
-  print("\n\t___________________________\n")
-  print(f"\tYour Current Balance is {Balance:.2f}.")
-  input("\tPress Enter to Return to Customer Home Page...")
 
 
 def customerMain():
@@ -779,8 +715,9 @@ def customerMain():
   cursor = connection.cursor()
 
   while True:
-    accnum = input(str("\n\tEnter you dedicated account number: "))
-    account_exist = checkCosAcc_existence(cursor, accnum)
+    checking_account_id = int(input("\n\tEnter your dedicate Checkings Account ID: "))
+    account_exist = checkAcc_existence(cursor, "checkings_account", "checkings_id", checking_account_id)
+    
     if account_exist:
       while True:
         try:
@@ -795,16 +732,16 @@ def customerMain():
           action = int(input("\n\tAction: "))
           
           if action == 1:
-            customerWith(connection, accnum)
+            customerWithdraw(connection, checking_account_id)
 
           elif action == 2:
-            customerDpst(connection, accnum)
+            customerDeposit(connection, checking_account_id)
 
           elif action == 3:
-            customerTrans(connection, accnum)
+            customerTransfer(connection, checking_account_id)
 
           elif action == 4:
-            customerBal(connection, accnum)
+            customerCheckBal(connection, checking_account_id)
           
           elif action == 5:
             os.system('cls')
@@ -812,33 +749,188 @@ def customerMain():
           
           else:
             print("Invalid Input...")
+            continue
             
         except ValueError as error:
-          print(f"Invalid Input...")
+          print(f"Invalid Input...{error}")
+          
     else:
       os.system('cls')
       print(f"\n\t___________________________\n"
-            f"Invalid Account Number...")
+            f"\tInvalid Account Number...")
 
   
-# program entrance
-adminMain()
-#customerMain() # for customer page
+def customerWithdraw(connection, checking_account_id):
+  os.system('cls')
+  print("\n\t------WITHDRAWAL------\n")
+  cursor = connection.cursor()
+  table = "checkings_account"
+  column = "balance"
+
+  while True:
+    Balance = fetch_singleValues(connection, cursor, table, column, "checkings_id", checking_account_id)
+    withdraw_amount = customerSession(Balance, "withdraw")
+    
+
+    if withdraw_amount <= Balance:
+      try:
+        os.system('cls')
+        print(f"\n\tThe amount you want to withdraw is {withdraw_amount}...\n")
+        newBalance = Balance - withdraw_amount
+
+        # Update the balance in the checkings_account table
+        editUser_updatingQuery(connection, cursor, table, column, "checkings_id", checking_account_id, newBalance)
+
+      except Exception as e:
+        print(f"Transaction Failed: {e}")
+        if not continueSession():
+          return
+
+      displayTransaction_status(newBalance)  # displays the transaction status
+      break
+
+
+    elif withdraw_amount > Balance:
+      os.system('cls')
+      print(f"\n\t___________________________\n"
+            f"\n\tThe amount you want to withdraw exceeds your current balance ({Balance})")
+
+    if not continueSession():
+      break
+
+
+def customerDeposit(connection, checking_account_id):
+  os.system('cls')
+  print("\n\t------DEPOSIT------\n")
+  cursor = connection.cursor()
+  table = "checkings_account"
+  column = "balance"
+
+  while True:
+    Balance = fetch_singleValues(connection, cursor, table, column, "checkings_id", checking_account_id)
+    deposit_amount = customerSession(Balance, "deposit")
+    
+    try:
+      os.system('cls')
+      print(f"\n\tThe amount you want to deposit is {deposit_amount}...\n")
+      newBalance = Balance + deposit_amount
+      
+      editUser_updatingQuery(connection, cursor, table, column, "checkings_id", checking_account_id, newBalance)
+    
+    except Exception as e:
+      print(f"Transaction Failed: {e}")
+      if not continueSession():
+        return
+    
+    displayTransaction_status(newBalance)
+    break
+    
+
+
+def customerTransfer(connection, checking_account_id):
+  os.system('cls')
+  print("\n\t------TRANSFER------\n")
+  cursor = connection.cursor()
+  table = "checkings_account"
+  column = "balance"
+  
+  while True:
+    try:
+      Balance = fetch_singleValues(connection, cursor, table, column, "checkings_id", checking_account_id)
+      transfer_amount = customerSession(Balance, "transfer")
+
+      if Balance >= transfer_amount:
+        while True: 
+          
+          try:
+            os.system('cls')
+            recepient_checkAccID = int(input("\tEnter the Account Number of the account to transfer to: "))
+            account_exists = checkAcc_existence(cursor, table, "checkings_id", recepient_checkAccID)
+
+            if account_exists and recepient_checkAccID != checking_account_id: # NOTE: executing the transfer
+              
+              # NOTE: Updating the Sending User Account Balance 
+              sender_newBalance = Balance - transfer_amount
+              editUser_updatingQuery(connection, cursor, table, column, "checkings_id", checking_account_id, sender_newBalance) 
+              
+              # NOTE: Updating the Receiving User Account Balance
+              recepient_currentBal = fetch_singleValues(connection, cursor, table, column, "checkings_id", recepient_checkAccID)
+              recepient_newBalance = transfer_amount + recepient_currentBal
+              editUser_updatingQuery(connection, cursor, table, column, "checkings_id", recepient_checkAccID, recepient_newBalance)
+
+              displayTransaction_status(sender_newBalance)
+              return # to the Main Menu
+              
+              
+            if recepient_checkAccID == checking_account_id: # NOTE: Invalid Session
+              print(f"\n\t___________________________\n"
+                      f"\n\tInvalid Account Number..."
+                      f"\n\tYou Entered your own Account Number which is invalid...")
+              if not continueSession():
+                return
+              
+            
+          
+          except mysql.connector.Error:
+            os.system('cls')
+            print(f"\n\t-------Account {checking_account_id} non-existent....-------")
+            if not continueSession():
+              return
+
+      
+      elif Balance < transfer_amount:
+        os.system('cls') 
+        print(f"\n\t___________________________\n" f"\n\tYou do not have the necessary funds to transfer that amount...")
+        if not continueSession():
+          return
+
+    except ValueError:
+      os.system('cls')
+      print("\n\t___________________________\n" "\n\tError, please enter a valid amount...")
+      if not continueSession():
+        return
+      
+
+  
+def customerCheckBal(connection, checking_account_id):
+  os.system('cls')
+  cursor = connection.cursor()
+  Balance = fetch_singleValues(connection, cursor, "checkings_account", "balance", "checkings_id", checking_account_id) # passing all the credentials as parameters to access the Balance
+  print("\n\t___________________________\n")
+  print(f"\tYour Current Balance is {Balance}.")
+  input("\tPress Enter to Return to Customer Home Page...")
+  
+
+
+# MAIN program entrance
+def banking_main():
+  while True:
+    os.system('cls')
+    print("\n\t----------Treasury Citadel Banking System----------\n\n"
+          "\t\t[1]: Admin / Employee\n\n"
+          "\t\t[2]: User / Customer\n")
+    
+    action = int(input("\n\t\tLog In as: "))
+
+    if action == 1:
+      # implement admin's log in system
+      adminMain()
+      break
+    
+    elif action == 2:
+      # implement customer's log in system
+      customerMain()
+      break
+
+    else:
+      os.system('cls')
+      print("\n\t-------Invalid Credential....")
+      input("\n\n\tPress enter to return to the main menu......")
+      continue
+      
+
+
+banking_main()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-# def fetchValues(cursor): # user-defined function to avoid reps in implementing the fetch_all function
-#   results = cursor.fetchall()
-#   for rows in results:
-#     print(rows)
