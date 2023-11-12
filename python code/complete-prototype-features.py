@@ -242,85 +242,55 @@ def add_customer_information(connection, cursor):
   except ValueError as error:
     display_error(error, "MySQL")
 
-def add_checkings_account(connection, cursor):
-  referenced_table = "customer_information"
-  os.system('cls')
-  print("\n\t---Add New Checkings Account Info---\n")
-  select_all_rows(cursor, referenced_table)
 
+# NOTE: generic function for adding records(to be used in the checkings_account, bank_asset, transactions TABLES)
+def add_record(connection, cursor, referenced_table, insertion_table, prompt_message, column_names):
+  os.system('cls')
+  print(f"\n\t---{prompt_message}---\n")
+  select_all_rows(cursor, referenced_table) 
+  
   try:
-    customer_id_content = int(input("\t\tCustomer ID: "))
-    account_exists = check_account_existence(cursor, referenced_table, "customer_id", customer_id_content)
+    id_content = int(input(f"\n\t{column_names[0]}: ")) # accesses the first value in the passed list(it's always the ID; checkings, asset, transaction)
+    account_exists = check_account_existence(cursor, referenced_table, column_names[0], id_content)
 
     if account_exists:
-      balance = handle_decimal_value_exception("Customer Account", customer_id_content)
-      query = "INSERT INTO checkings_account (customer_id, balance) VALUES(%s, %s)"
-      values = (customer_id_content, balance)
+      if len(column_names) == 2: # for either checkings_account or bank_asset tables
+        balance = handle_decimal_value_exception("Customer Checking Account", id_content)
+        values = (id_content, balance)
 
+      elif len(column_names) == 4: # for transactions table
+        transaction_date = input_date("Transaction")
+        amount = handle_decimal_value_exception("Checkings Account", id_content)
+        transaction_type = input("\t\tTransaction Type: ")
+        values = (id_content, transaction_date, amount, transaction_type)
+        
+      # NOTE: joining the values in the column_names then separating them using string formatting
+      query = f"INSERT INTO {insertion_table} ({', '.join(column_names)}) VALUES({', '.join(['%s'] * len(values))})"
       cursor.execute(query, values)
       connection.commit()
-      display_rows_affected(cursor, "checkings_id", cursor.lastrowid)
-
+      display_rows_affected(cursor, column_names[0], id_content)
+      
     else:
-      print(f"Customer {customer_id_content} is non-existent...")
-
+      print(f"Account {id_content} is non-existent...")
+    
   except mysql.connector.Error as error:
-      display_error(error, "MySQL")
+    display_error(error, "MySQL")
+
+
+def add_checkings_account(connection, cursor):
+  referenced_table = "customer_information"
+  insertion_table = "checkings_account"
+  add_record(connection, cursor, referenced_table, insertion_table, "Add New Checkings Account", ["customer_id", "balance"]) # passing the column names for which values will be added in a list
 
 def add_bank_asset(connection, cursor):
   referenced_table = "checkings_account"
-  os.system('cls')
-  print("\n\t---Add New Bank Asset Info---\n")
-  select_all_rows(cursor, referenced_table)
-
-  try:
-    checkingsIDcontent = int(input("\t\tCheckings ID: "))
-    account_exists = check_account_existence(cursor, referenced_table, "checkings_id", checkingsIDcontent)
-
-    if account_exists:
-      checkings_balance = handle_decimal_value_exception("Checking Account", checkingsIDcontent)
-      query = "INSERT INTO bank_asset(checkings_id, checkings_balance) VALUES(%s, %s)"
-      values = (checkingsIDcontent, checkings_balance)
-
-      cursor.execute(query, values)
-      connection.commit()
-      display_rows_affected(cursor, "asset_id", cursor.lastrowid)
-
-    else:
-      print(f"Account {checkingsIDcontent} is non-existent...")
-
-  except mysql.connector.Error as error:
-      print(f"Error: {error}")
+  insertion_table = "bank_asset"
+  add_record(connection, cursor, referenced_table, insertion_table, "Add New Bank Asset Information", ["checkings_id", "checkings_balance"])
 
 def add_transactions(connection, cursor):
   referenced_table = "checkings_account"
-  os.system('cls')
-  print("\n\t---Add New Transaction Information---\n")
-  select_all_rows(cursor, referenced_table)
-  
-  while True:
-    try:
-      checkingsIDcontent = int(input("\t\tCheckings ID: "))
-      account_exists = check_account_existence(cursor, referenced_table, "checkings_id", checkingsIDcontent)
-
-      if account_exists:
-        transaction_date = input_date("Transaction")
-        amount = handle_decimal_value_exception("Checkings Account", checkingsIDcontent)
-        transaction_type = input("\t\tTransaction Type: ")
-
-        query = "INSERT INTO transactions(checkings_id, transaction_date, amount, transaction_type) VALUES (%s, %s, %s, %s)"
-        values = (checkingsIDcontent, transaction_date, amount, transaction_type)
-
-        cursor.execute(query, values)
-        connection.commit()
-        display_rows_affected(cursor, "transactions_id", cursor.lastrowid)
-
-      else:
-        print(f"Checkings Account {checkingsIDcontent} is non-existent...")
-
-    except mysql.connector.Error as error:
-      print(f"Error: {error}")
-
+  insertion_table = "transactions"
+  add_record(connection, cursor, referenced_table, insertion_table, "Add New Transaction Information", ["checkings_id", "transaction_date", "amount", "transaction_type"])
 
 
 
