@@ -706,46 +706,6 @@ def display_transaction_history(connection, checking_account_id):
 
 
 
-
-# def display_transaction_history(connection, checking_account_id):
-#   try:
-#     cursor = connection.cursor()
-#     fetch_query = "SELECT transactions_id, transaction_date, amount, transaction_type FROM transactions WHERE checkings_id = %s"
-#     cursor.execute(fetch_query, (checking_account_id,))
-#     time.sleep(2) # delay
-#     format_table(cursor) 
-    
-#   except mysql.connector.Error as error:
-#     display_error(error, "MySQL")
-
-# # def display_transaction_history(connection, checking_account_id):
-# #     try:
-# #       cursor = connection.cursor()
-# #       fetch_query = "SELECT transactions_id, transaction_date, amount, transaction_type FROM transactions WHERE checkings_id = %s"
-# #       cursor.execute(fetch_query, (checking_account_id,))
-# #       data = cursor.fetchall()
-
-# #       # Print the fetched data
-# #       print("Fetched Data:")
-# #       for row in data:
-# #         print(row)
-
-# #       # Add a delay for 2 seconds
-# #       import time
-# #       time.sleep(2)
-
-      
-# #       print("Calling format_table...")
-# #       format_table(cursor)
-        
-# #     except mysql.connector.Error as error:
-# #       display_error(error, "MySQL")
-
-# #     # Wait for user input before exiting
-# #     input("Press Enter to exit...")
-
-
-
 def customerMain():
   os.system('cls')
   connection = connect_database()
