@@ -1,14 +1,11 @@
+import time
 import mysql.connector
 import os
 from decimal import Decimal, DecimalException # for Decimal datatype input in mysql
 from tabulate import tabulate # for precise tables & columns formatting 
 from datetime import datetime
 
-
-# NOTE: feel free suggest any improvement in this code
-
-
-
+            
 class User: # NOTE: all functions to be used in child classes (Employee, Customer) are included in here
   
   def __init__(self):
@@ -60,6 +57,7 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
           
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
     
   def display_rows_affected(self, cursor, ID, IDContent):
     print(f"\n\t{cursor.rowcount} session initiated| {ID}: {IDContent}")
@@ -122,6 +120,7 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
       
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;") # undo the changes made during the transaction/session
   
   def check_account_existence(self, cursor, table, id_column, id_content):    
     try:
@@ -132,6 +131,7 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
     
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
     
   def fetch_single_value(self, connection, cursor, table, column, id_column, id_content): # function for DISPLAYING single values
     try:
@@ -144,17 +144,49 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
     
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
 
-  # NOTE: Updating Query
-  def updating_query(self, connection, cursor, table, column, ID, IDcontent, value): # function for FLEXIBLE updation in both admin and customer features
+
+  # NOTE: Updating Query: employs optimistic concurreny control(checks if the timestamp and version during the reading/searching
+  # is the same during the writing/updating period ; if yes, the update proceeds; if not, a waiting time until the next session is initiated)
+  
+  def updating_query(self, connection, cursor, table, column, ID, IDcontent, value):
     try:
-      main_query = f"UPDATE {table} SET {column} = %s WHERE {ID} = %s"
-      cursor.execute(main_query, (value, IDcontent)) 
-      connection.commit() # a must
-      self.display_rows_affected(cursor, ID, IDcontent)
+      cursor.execute("START TRANSACTION;")
+      update_attempt = 0
+      max_attempts = 3 
+      waiting_time = 5
       
+      while update_attempt < max_attempts:
+        cursor.execute(f"SELECT version, last_modified FROM {table} WHERE {ID} = %s;", (IDcontent,)) # reads the current version(a placeholder varaiable) and timestamp of the record
+        result = cursor.fetchone()
+        current_version, last_modified = result[0], result[1] # 0 = version & 1 = last_modified(timestamp)
+        
+        print("\n\tProcessing.....")
+        time.sleep(2) # 2-second processing time
+        
+        # NOTE: the current timestamp must match the last_modified timestamp to proceed to the update
+        main_query = f"UPDATE {table} SET {column} = %s, version = version + 1, last_modified = CURRENT_TIMESTAMP WHERE {ID} = %s AND last_modified = %s"
+        cursor.execute(main_query, (value, IDcontent, last_modified))
+        connection.commit()
+        
+        if cursor.rowcount > 0: # Update successful
+          os.system('cls')
+          self.display_rows_affected(cursor, ID, IDcontent)
+          break
+
+        else:
+          print(f"Update failed. Retrying after {waiting_time} seconds...")
+          update_attempt += 1
+          time.sleep(waiting_time) # 5 sec.
+          
+      if update_attempt == max_attempts:
+        print(f"Maximum update attempts reached. Update aborted.")
+            
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
+      raise
 
     
     
@@ -187,11 +219,43 @@ class Employee(User): # NOTE: inherits from USER
 
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
-      
-    
-  # NOTE: Foreign key constraints maintain referential integrity, ensuring that a user can only be deleted
-          # IF AND ONLY IF its references in related tables have been deleted
+      cursor.execute("ROLLBACK;")
 
+
+  def admin_session_log(self, connection, cursor, session_type, table, column, modified_value, stored_value):
+    try:
+      query = "INSERT INTO session_log (session_type, table_involved, column_involved, modified_value, stored_value) VALUES(%s, %s, %s, %s, %s)"
+      values = (session_type, table, column, modified_value, stored_value)
+      cursor.execute(query, values)
+      connection.commit()
+      self.display_rows_affected(cursor, "Session Log ID", cursor.lastrowid)
+
+    except mysql.connector.Error as error:
+      self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
+      
+      
+  def view_session_log(self, connection):
+    try:
+      cursor = connection.cursor()
+      os.system('cls')
+      print("\n\tFetching.....")
+      time.sleep(2)
+      os.system('cls')
+      print(f"\n\t\t\t\t\t-------Admin Session Log History-------")
+      cursor.execute("SELECT * FROM session_log")
+      self.format_table(cursor)
+      
+      input("Press Enter to continue...")
+      os.system('clear')  # Use 'clear' for Linux/MacOS or 'cls' for Windows
+      
+    except mysql.connector.Error as error:
+      self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
+    
+    
+
+  # NOTE: Foreign key constraints maintain referential integrity, ensuring that a user can only be deleted IF AND ONLY IF its references in related tables have been deleted
   def delete_user_by_ID(self, connection, cursor, table, id_column, id_content):
     while True:
       account_exists = self.check_account_existence(cursor, table, id_column, id_content)
@@ -224,9 +288,11 @@ class Employee(User): # NOTE: inherits from USER
           cursor.execute(delete_main_value, (id_content,)) # NOTE: deletion for the main value in the parent table
           connection.commit()
           self.display_rows_affected(cursor, id_column, id_content)
+          self.admin_session_log(connection, cursor, "Edit User", table, None, f"{id_column.capitalize()}: {id_content}", "Deleted")
           
         except mysql.connector.Error as error:
           self.display_error(error, "MySQL")
+          cursor.execute("ROLLBACK;")
 
         finally:
           cursor.execute("SET foreign_key_checks = 1") # enabling the foreign key checks again
@@ -240,6 +306,7 @@ class Employee(User): # NOTE: inherits from USER
       if not self.continue_session():
         self.adminMain()
 
+  
 
   # NOTE: Insertion/Adding Queries
   def add_customer_information(self, connection, cursor):
@@ -263,6 +330,7 @@ class Employee(User): # NOTE: inherits from USER
           cursor.execute(query, values)
           connection.commit()
           self.display_rows_affected(cursor, "customer_id", cursor.lastrowid)
+          self.admin_session_log(connection, cursor, "Add User", "customer_information", "customer_password, first_name, last_name, email, address, id_type, occupation, annual_gross_income", None, values)
           break
           
         else: return
@@ -299,6 +367,7 @@ class Employee(User): # NOTE: inherits from USER
             cursor.execute(query, values)
             connection.commit()
             self.display_rows_affected(cursor, column_names[0], id_content)
+            self.admin_session_log(connection, cursor, "Add User", insertion_table, ','.join(column_names), None, ','.join(map(str, values)))
             break
           
           else: return
@@ -308,6 +377,7 @@ class Employee(User): # NOTE: inherits from USER
         
       except mysql.connector.Error as error:
         self.display_error(error, "MySQL")
+        cursor.execute("ROLLBACK;")
     
   def add_checkings_account(self, connection, cursor):
     referenced_table = "customer_information"
@@ -384,6 +454,7 @@ class Employee(User): # NOTE: inherits from USER
             
             if self.confirm_action():
               self.updating_query(connection, cursor, table, column, id_column, id_content, new_value)
+              self.admin_session_log(connection, cursor, "Edit User", table, column, current_value, new_value)
               
             else: return
             
@@ -392,9 +463,10 @@ class Employee(User): # NOTE: inherits from USER
             
           except ValueError as error:
             self.display_error(error)
-          
+        
       else:
         print(f"\n\t-----Account {id_content} non-existent....\n")
+
 
   def adminMain(self):
     connection = self.connect_database()
@@ -406,7 +478,9 @@ class Employee(User): # NOTE: inherits from USER
         "\t[2] Edit Users\n"
         "\t[3] Delete Users\n"
         "\t[4] Add Users\n"
-        "\t[5] Logout")
+        "\t[5] Sessions Log\n"
+        "\t[6] Logout")
+
         
         action = int(input("\n\tAction: "))
         
@@ -427,6 +501,9 @@ class Employee(User): # NOTE: inherits from USER
           break
         
         elif action == 5:
+          self.view_session_log(connection)
+
+        elif action == 6:
           os.system('cls')
           banking_system.banking_main()
         
@@ -435,6 +512,7 @@ class Employee(User): # NOTE: inherits from USER
           
       except ValueError as error:
         self.display_error(error, "ValueError")
+
 
   def admin_view_user(self, connection):
     os.system('cls')
@@ -448,16 +526,20 @@ class Employee(User): # NOTE: inherits from USER
         action = int(input("\n\tAction: "))
         
         if action == 1:  # [1] Customer Information: table name as the parameter
-          self.select_all_rows(cursor, "customer_information") 
+          table = "customer_information"
+          self.select_all_rows(cursor, table) 
             
         elif action == 2: # [2] Checkings Accounts
-          self.select_all_rows(cursor, "checkings_account")
+          table = "checkings_account"
+          self.select_all_rows(cursor, table)
 
         elif action == 3: # [3] Bank Assets
-          self.select_all_rows(cursor, "bank_asset")
+          table = "bank_asset"
+          self.select_all_rows(cursor, table)
           
         elif action == 4: # [4] Transactions
-          self.select_all_rows(cursor, "transactions")
+          table = "transactions"
+          self.select_all_rows(cursor, table)
         
         elif action == 5: # [5] All Records NOTE: the "all_records" is a VIEW which is used to JOIN all information of the tables
           self.select_all_rows(cursor, "all_records")
@@ -467,12 +549,15 @@ class Employee(User): # NOTE: inherits from USER
           
         else:
           print("Invalid Input...")
+          
+        self.admin_session_log(connection, cursor, "View User", table, None, None, None) # for session log
         
         if not self.continue_session(): # returns to main menu if false
           self.adminMain()
           
       except ValueError as error:
         self.display_error(error, "ValueError")
+  
   
   def admin_edit_user(self, connection):
     os.system('cls')
@@ -521,6 +606,7 @@ class Employee(User): # NOTE: inherits from USER
         
       except ValueError as error:
         self.display_error(error, "ValueError")
+          
           
   def admin_delete_user(self, connection):
     os.system('cls')
@@ -600,6 +686,7 @@ class Employee(User): # NOTE: inherits from USER
     
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
 
 
 
@@ -640,6 +727,7 @@ class Customer(User): # NOTE: inherits from USER
 
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
 
   def display_transaction_history(self, connection, checking_account_id):
     try:
@@ -651,7 +739,8 @@ class Customer(User): # NOTE: inherits from USER
       self.format_table(cursor)
     
     except mysql.connector.Error as error:
-        self.display_error(error, "MySQL")
+      self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
         
     input("Press Enter to exit...")
 
@@ -714,6 +803,7 @@ class Customer(User): # NOTE: inherits from USER
       
       except mysql.connector.Error as error:
         self.display_error(error, "MySQL")
+        cursor.execute("ROLLBACK;")
 
   
 
@@ -766,22 +856,30 @@ class Customer(User): # NOTE: inherits from USER
     while True:
       current_balance = self.fetch_single_value(connection, cursor, table, column, "checkings_id", checking_account_id)
       deposit_amount = self.customer_session(current_balance, "deposit")
+      confirm_withdrawal = self.confirm_action()
       
-      try:
-        os.system('cls')
-        print(f"\n\tThe amount you want to deposit is {deposit_amount}...\n")
-        new_balance = current_balance + deposit_amount
+      if confirm_withdrawal:
+        try:
+          os.system('cls')
+          print(f"\n\tThe amount you want to deposit is {deposit_amount}...\n")
+          new_balance = current_balance + deposit_amount
+          
+          self.updating_query(connection, cursor, table, column, "checkings_id", checking_account_id, new_balance)
+          self.add_transaction_history(connection, cursor, checking_account_id, deposit_amount, "Deposit")
+          self.view_transaction_status(new_balance)
         
-        self.updating_query(connection, cursor, table, column, "checkings_id", checking_account_id, new_balance)
-        self.add_transaction_history(connection, cursor, checking_account_id, deposit_amount, "Deposit")
-        self.view_transaction_status(new_balance)
-      
-      except Exception as e:
-        print(f"Transaction Failed: {e}")
-        if not self.continue_session():
-          return
+        except Exception as e:
+          print(f"Transaction Failed: {e}")
+          if not self.continue_session():
+            return
 
-      break
+        break
+      
+      elif not confirm_withdrawal:
+        return
+      
+      if not self.continue_session():
+        break
     
 
   def customer_transfer(self, connection, my_checking_account_id):
@@ -826,6 +924,7 @@ class Customer(User): # NOTE: inherits from USER
                 
             except mysql.connector.Error as error:
               self.display_error(error, "MySQL")
+              cursor.execute("ROLLBACK;")
               if not self.continue_session():
                 return
         
@@ -852,6 +951,7 @@ class Customer(User): # NOTE: inherits from USER
       
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
+      cursor.execute("ROLLBACK;")
 
 
 
@@ -890,6 +990,8 @@ class Banking_System(): # NOTE: main
         input("\n\n\tPress enter to return to the main menu......")
         continue
   
+
+
 
 # MAIN program entrance
 if __name__ == "__main__":
