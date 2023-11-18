@@ -4,12 +4,27 @@ import os
 from decimal import Decimal, DecimalException # for Decimal datatype input in mysql
 from tabulate import tabulate # for precise tables & columns formatting 
 from datetime import datetime
+from abc import ABC, abstractmethod
 
-            
-class User: # NOTE: all functions to be used in child classes (Employee, Customer) are included in here
+
+
+class User(ABC): # NOTE: all functions to be used in child classes (Employee, Customer) are included in here
   
-  def __init__(self):
-    self.connection = None
+  def __init__(self, host, username, password, database): # encapsulation
+    self._host = host
+    self._username = username
+    self._password = password
+    self._database = database
+    self._connection = None
+
+  @abstractmethod
+  def add_transaction_log(self):
+    pass
+
+  @abstractmethod
+  def view_transaction_log(self):
+    pass
+    
     
   def display_error(self, error_message, error_type = None):
     if error_type:
@@ -23,10 +38,10 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
     
   def connect_database(self):
     try:                     # NOTE: all users who will access the database must be connected to the same network
-      host = "192.168.18.48"  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
-      username = "miguel"
-      password = "password"
-      database = "bankingoop"
+      host = self._host  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
+      username = self._username
+      password = self._password
+      database = self._database
 
       self.connection = mysql.connector.connect(
           host= host,
@@ -41,6 +56,17 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
       
     return self.connection
 
+  def check_database_connection(self):
+    if self.connection is not None:
+      return True
+    else:
+      return False
+
+  def close_database(self):
+    if self._connection:
+      self._connection.close()
+      print("Database Connection Closed.")
+            
   def continue_session(self): # dedicated for looping purposes
     continue_session = int(input("\n\nContinue Session (1 | 0): "))
     return 1 if continue_session == 1 else 0
@@ -163,7 +189,7 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
         current_version, last_modified = result[0], result[1] # 0 = version & 1 = last_modified(timestamp)
         
         print("\n\tProcessing.....")
-        time.sleep(2) # 2-second processing time
+        time.sleep(2) 
         
         # NOTE: the current timestamp must match the last_modified timestamp to proceed to the update
         main_query = f"UPDATE {table} SET {column} = %s, version = version + 1, last_modified = CURRENT_TIMESTAMP WHERE {ID} = %s AND last_modified = %s"
@@ -189,12 +215,16 @@ class User: # NOTE: all functions to be used in child classes (Employee, Custome
       raise
 
     
-    
+
     
 class Employee(User): # NOTE: inherits from USER 
   
-  def __init__(self, banking_system): #  accept an instance of BankingSystem and store it as an attribute.
-    super().__init__()
+  def __init__(self, banking_system): #  accept an instance of BankingSystem and store it as an attribute
+    super().__init__(host="192.168.18.48",
+                     username="miguel",
+                     password="password",
+                     database="bankingoop")
+
     self.banking_system = banking_system # to be used in the adminMain() 
         
   def admin_display_options(self, description):
@@ -222,32 +252,42 @@ class Employee(User): # NOTE: inherits from USER
       cursor.execute("ROLLBACK;")
 
 
-  def admin_session_log(self, connection, cursor, session_type, table, column, modified_value, stored_value):
+  def insertion_transaction_log(self, connection, cursor, session_type, table, column, modified_value, stored_value):
+    query = "INSERT INTO session_log (session_type, table_involved, column_involved, modified_value, stored_value) VALUES(%s, %s, %s, %s, %s)"
+    values = (session_type, table, column, modified_value, stored_value)
+    cursor.execute(query, list(values))
+    connection.commit()
+      
+      
+  def add_transaction_log(self, connection, cursor, session_type, table, column, modified_value, stored_value):
     try:
-      query = "INSERT INTO session_log (session_type, table_involved, column_involved, modified_value, stored_value) VALUES(%s, %s, %s, %s, %s)"
-      values = (session_type, table, column, modified_value, stored_value)
-      cursor.execute(query, values)
-      connection.commit()
+      if isinstance(column, list): # for multiple columns and values(data atomicity must be maintained)
+        for col, val in zip(column, stored_value):
+          self.insertion_transaction_log(connection, cursor, session_type, table, col, modified_value, val)
+      
+      else:
+        self.insertion_transaction_log(connection, cursor, session_type, table, column, modified_value, stored_value)
+
       self.display_rows_affected(cursor, "Session Log ID", cursor.lastrowid)
 
     except mysql.connector.Error as error:
-      self.display_error(error, "MySQL")
-      cursor.execute("ROLLBACK;")
-      
-      
-  def view_session_log(self, connection):
+        self.display_error(error, "MySQL")
+        cursor.execute("ROLLBACK;")
+
+
+  def view_transaction_log(self, connection):
     try:
       cursor = connection.cursor()
       os.system('cls')
       print("\n\tFetching.....")
       time.sleep(2)
       os.system('cls')
-      print(f"\n\t\t\t\t\t-------Admin Session Log History-------")
+      print(f"\n\t\t\t\t\t-------Admin Transaction Log History-------")
       cursor.execute("SELECT * FROM session_log")
       self.format_table(cursor)
       
       input("Press Enter to continue...")
-      os.system('clear')  # Use 'clear' for Linux/MacOS or 'cls' for Windows
+      os.system('clear') 
       
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
@@ -288,7 +328,7 @@ class Employee(User): # NOTE: inherits from USER
           cursor.execute(delete_main_value, (id_content,)) # NOTE: deletion for the main value in the parent table
           connection.commit()
           self.display_rows_affected(cursor, id_column, id_content)
-          self.admin_session_log(connection, cursor, "Edit User", table, None, f"{id_column.capitalize()}: {id_content}", "Deleted")
+          self.add_transaction_log(connection, cursor, "Delete User", table, None, f"{id_column.capitalize()}: {id_content}", "Deleted")
           
         except mysql.connector.Error as error:
           self.display_error(error, "MySQL")
@@ -323,6 +363,7 @@ class Employee(User): # NOTE: inherits from USER
         cust_occupation = input("\t\tOccupation: ")
         cust_annGrossIncome = self.get_decimal_input("Annual Gross Income")
 
+        column = ["customer_password", "first_name", "last_name", "email", "address", "id_type", "occupation", "annual_gross_income"]
         query = "INSERT INTO customer_information (customer_password, first_name, last_name, email, address, id_type, occupation, annual_gross_income) VALUES (%s,%s, %s, %s, %s, %s, %s, %s)"
         values = (cust_passwword, cust_fname, cust_lname, cust_email, cust_address, cust_idType, cust_occupation, cust_annGrossIncome)
         
@@ -330,7 +371,7 @@ class Employee(User): # NOTE: inherits from USER
           cursor.execute(query, values)
           connection.commit()
           self.display_rows_affected(cursor, "customer_id", cursor.lastrowid)
-          self.admin_session_log(connection, cursor, "Add User", "customer_information", "customer_password, first_name, last_name, email, address, id_type, occupation, annual_gross_income", None, values)
+          self.add_transaction_log(connection, cursor, "Add User", "customer_information", column, None, values)
           break
           
         else: return
@@ -367,7 +408,7 @@ class Employee(User): # NOTE: inherits from USER
             cursor.execute(query, values)
             connection.commit()
             self.display_rows_affected(cursor, column_names[0], id_content)
-            self.admin_session_log(connection, cursor, "Add User", insertion_table, ','.join(column_names), None, ','.join(map(str, values)))
+            self.add_transaction_log(connection, cursor, "Add User", insertion_table, column_names, None, values)
             break
           
           else: return
@@ -454,7 +495,7 @@ class Employee(User): # NOTE: inherits from USER
             
             if self.confirm_action():
               self.updating_query(connection, cursor, table, column, id_column, id_content, new_value)
-              self.admin_session_log(connection, cursor, "Edit User", table, column, current_value, new_value)
+              self.add_transaction_log(connection, cursor, "Edit User", table, column, current_value, new_value)
               
             else: return
             
@@ -470,48 +511,50 @@ class Employee(User): # NOTE: inherits from USER
 
   def adminMain(self):
     connection = self.connect_database()
+    
     while True:
-      os.system('cls')
-      try:
-        print("\n_______ADMIN AUTHORIZED_______\n"
-        "\t[1] View Users\n"
-        "\t[2] Edit Users\n"
-        "\t[3] Delete Users\n"
-        "\t[4] Add Users\n"
-        "\t[5] Sessions Log\n"
-        "\t[6] Logout")
+      if self.check_database_connection:
+        os.system('cls')
+        try:
+          print("\n_______ADMIN AUTHORIZED_______\n"
+          "\t[1] View Users\n"
+          "\t[2] Edit Users\n"
+          "\t[3] Delete Users\n"
+          "\t[4] Add Users\n"
+          "\t[5] Transactions Log\n"
+          "\t[6] Logout")
 
-        
-        action = int(input("\n\tAction: "))
-        
-        if action == 1:
-          self.admin_view_user(connection)
-          break
-
-        elif action == 2:
-          self.admin_edit_user(connection)
-          break
-
-        elif action == 3:
-          self.admin_delete_user(connection)
-          break
-
-        elif action == 4:
-          self.admin_add_user(connection)
-          break
-        
-        elif action == 5:
-          self.view_session_log(connection)
-
-        elif action == 6:
-          os.system('cls')
-          banking_system.banking_main()
-        
-        else:
-          print("Invalid Input")
           
-      except ValueError as error:
-        self.display_error(error, "ValueError")
+          action = int(input("\n\tAction: "))
+          
+          if action == 1:
+            self.admin_view_user(connection)
+            break
+
+          elif action == 2:
+            self.admin_edit_user(connection)
+            break
+
+          elif action == 3:
+            self.admin_delete_user(connection)
+            break
+
+          elif action == 4:
+            self.admin_add_user(connection)
+            break
+          
+          elif action == 5:
+            self.view_transaction_log(connection)
+
+          elif action == 6:
+            os.system('cls')
+            banking_system.banking_main()
+          
+          else:
+            print("Invalid Input")
+            
+        except ValueError as error:
+          self.display_error(error, "ValueError")
 
 
   def admin_view_user(self, connection):
@@ -550,7 +593,7 @@ class Employee(User): # NOTE: inherits from USER
         else:
           print("Invalid Input...")
           
-        self.admin_session_log(connection, cursor, "View User", table, None, None, None) # for session log
+        self.add_transaction_log(connection, cursor, "View User", table, None, None, None) # for session log
         
         if not self.continue_session(): # returns to main menu if false
           self.adminMain()
@@ -693,7 +736,10 @@ class Employee(User): # NOTE: inherits from USER
 
 class Customer(User): # NOTE: inherits from USER 
   def __init__(self, banking_system):
-    super().__init__()
+    super().__init__(host="192.168.18.48",
+                     username="miguel",
+                     password="password",
+                     database="bankingoop")
     self.banking_system = banking_system
 
     
@@ -715,7 +761,7 @@ class Customer(User): # NOTE: inherits from USER
               f"\n\tTransaction completed successfully, your new balance is {new_balance}.")
     input("\tPress Enter to Return to Customer Home Page...")
 
-  def add_transaction_history(self, connection, cursor, checkings_id, amount, transaction_type):
+  def add_transaction_log(self, connection, cursor, checkings_id, amount, transaction_type):
     try:
       cursor = connection.cursor()
       transaction_date = datetime.now().strftime("%Y-%m-%d") # returns the current date
@@ -729,13 +775,13 @@ class Customer(User): # NOTE: inherits from USER
       self.display_error(error, "MySQL")
       cursor.execute("ROLLBACK;")
 
-  def display_transaction_history(self, connection, checking_account_id):
+  def view_transaction_log(self, connection, checking_account_id):
     try:
       os.system('cls')
       cursor = connection.cursor()
       fetch_query = "SELECT transactions_id, transaction_date, amount, transaction_type FROM transactions WHERE checkings_id = %s"
       cursor.execute(fetch_query, (checking_account_id,))
-      print(f"\n\t-------Account {checking_account_id} Transaction History-------")
+      print(f"\n\t-------Account {checking_account_id} Transaction Log History-------")
       self.format_table(cursor)
     
     except mysql.connector.Error as error:
@@ -751,60 +797,60 @@ class Customer(User): # NOTE: inherits from USER
     cursor = self.connection.cursor()
 
     while True:
-      try:
-        os.system('cls')
-        checking_account_id = int(input("\n\tEnter your dedicated Checkings Account ID: "))
-        account_exist = self.check_account_existence(cursor, "checkings_account", "checkings_id", checking_account_id)
-        
-        if account_exist:
-          while True:
-            try:
-              os.system('cls')
-              print("\n_______Customer Page_______\n"
-              "\t[1] Withdraw Money\n"
-              "\t[2] Deposit Amount\n"
-              "\t[3] Transfer Money\n"
-              "\t[4] Check Balance\n"
-              "\t[5] Transaction History\n"
-              "\t[6] Logout\n")
-              
-              action = int(input("\n\tAction: "))
-              
-              if action == 1:
-                self.customer_withdraw(connection, checking_account_id)
-
-              elif action == 2:
-                self.customer_deposit(connection, checking_account_id)
-
-              elif action == 3:
-                self.customer_transfer(connection, checking_account_id)
-
-              elif action == 4:
-                self.customer_check_balance(connection, checking_account_id)
-              
-              elif action == 5:
-                self.display_transaction_history(connection, checking_account_id)
-                
-              elif action == 6:
-                os.system('cls')
-                banking_system.banking_main()
-              
-              else:
-                print("Invalid Input...")
-                continue
-                
-            except ValueError as error:
-              self.display_error(error, "ValueError")
-            
-        else:
+      if self.check_database_connection:
+        try:
           os.system('cls')
-          print(f"\n\t___________________________\n"
-                f"\tInvalid Account Number...")
-      
-      except mysql.connector.Error as error:
-        self.display_error(error, "MySQL")
-        cursor.execute("ROLLBACK;")
+          checking_account_id = int(input("\n\tEnter your dedicated Checkings Account ID: "))
+          account_exist = self.check_account_existence(cursor, "checkings_account", "checkings_id", checking_account_id)
+          
+          if account_exist:
+            while True:
+              try:
+                os.system('cls')
+                print("\n_______Customer Page_______\n"
+                "\t[1] Withdraw Money\n"
+                "\t[2] Deposit Amount\n"
+                "\t[3] Transfer Money\n"
+                "\t[4] Check Balance\n"
+                "\t[5] Transaction History\n"
+                "\t[6] Logout\n")
+                
+                action = int(input("\n\tAction: "))
+                
+                if action == 1:
+                  self.customer_withdraw(connection, checking_account_id)
 
+                elif action == 2:
+                  self.customer_deposit(connection, checking_account_id)
+
+                elif action == 3:
+                  self.customer_transfer(connection, checking_account_id)
+
+                elif action == 4:
+                  self.customer_check_balance(connection, checking_account_id)
+                
+                elif action == 5:
+                  self.view_transaction_log(connection, checking_account_id)
+                  
+                elif action == 6:
+                  os.system('cls')
+                  banking_system.banking_main()
+                
+                else:
+                  print("Invalid Input...")
+                  continue
+                  
+              except ValueError as error:
+                self.display_error(error, "ValueError")
+              
+          else:
+            os.system('cls')
+            print(f"\n\t___________________________\n"
+                  f"\tInvalid Account Number...")
+        
+        except mysql.connector.Error as error:
+          self.display_error(error, "MySQL")
+          cursor.execute("ROLLBACK;")
   
 
   def customer_withdraw(self, connection, checking_account_id):
@@ -826,7 +872,7 @@ class Customer(User): # NOTE: inherits from USER
           # NOTE: updates the balance in the checkings_account table
           self.updating_query(connection, cursor, table, column, "checkings_id", checking_account_id, new_balance)
           self.view_transaction_status(new_balance)  # displays the transaction status
-          self.add_transaction_history(connection, cursor, checking_account_id, withdraw_amount, "Withdraw")
+          self.add_transaction_log(connection, cursor, checking_account_id, withdraw_amount, "Withdraw")
 
         except Exception as e:
           print(f"Transaction Failed: {e}")
@@ -865,7 +911,7 @@ class Customer(User): # NOTE: inherits from USER
           new_balance = current_balance + deposit_amount
           
           self.updating_query(connection, cursor, table, column, "checkings_id", checking_account_id, new_balance)
-          self.add_transaction_history(connection, cursor, checking_account_id, deposit_amount, "Deposit")
+          self.add_transaction_log(connection, cursor, checking_account_id, deposit_amount, "Deposit")
           self.view_transaction_status(new_balance)
         
         except Exception as e:
@@ -912,7 +958,7 @@ class Customer(User): # NOTE: inherits from USER
                 
                 self.updating_query(connection, cursor, table, column, "checkings_id", recepient_checkAccID, recepient_new_balance)
                 self.view_transaction_status(sender_new_balance)
-                self.add_transaction_history(connection, cursor, my_checking_account_id, transfer_amount, "Transfer")
+                self.add_transaction_log(connection, cursor, my_checking_account_id, transfer_amount, "Transfer")
                 return # to the Main Menu
                 
                 
@@ -957,11 +1003,15 @@ class Customer(User): # NOTE: inherits from USER
 
 
 class Banking_System(): # NOTE: main
+  # def __init__(self):
+  #   self.user = User(host="192.168.18.48", username="miguel", password="password", database="bankingoop")
+  #   self.connection = self.user.connect_database()
+  #   self.employee = Employee(self) # Employee instance with a reference to the Banking_System instance it belongs to
+  #   self.customer = Customer(self)    
   def __init__(self):
-    self.user = User()
-    self.connection = self.user.connect_database()
-    self.employee = Employee(self) # Employee instance with a reference to the Banking_System instance it belongs to
-    self.customer = Customer(self)    
+    self.employee = Employee(self)  # Employee instance with a reference to the Banking_System instance it belongs to
+    self.customer = Customer(self)
+    self.connection = None  # Initialize connection here or in the login methods
     
 
   # MAIN program entrance
@@ -976,6 +1026,8 @@ class Banking_System(): # NOTE: main
 
       if action == 1:
         # implement admin's log in system
+        # self.user = self.employee  # Do not create an instance of User directly
+        # self.connection = self.employee.connect_database()  # Use connect_database directly or in your adminMain method
         self.employee.adminMain()
         break
       
@@ -989,11 +1041,13 @@ class Banking_System(): # NOTE: main
         print("\n\t-------Invalid Credential....")
         input("\n\n\tPress enter to return to the main menu......")
         continue
+    
+    self.user.close_database()
   
 
 
 
 # MAIN program entrance
 if __name__ == "__main__":
-    banking_system = Banking_System()
-    banking_system.banking_main()
+  banking_system = Banking_System()
+  banking_system.banking_main()
