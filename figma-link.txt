@@ -2,3 +2,6 @@ Compilation of Figma projects used for GUI Design that was converted to Tkinter
 
 Employee Login Page
 https://www.figma.com/file/aecHtykWSrPuoVpnHosZYl/Treasury-Citadel?type=design&node-id=5-21&mode=design&t=qJ1hFH7fkZgcQSfM-0
+
+Customer Login Page
+https://www.figma.com/file/110Qsa0F54qgrD5xlCamVt/Customer-Login-Page?type=design&node-id=0-1&mode=design&t=3tGiztIpK4T6PFPb-0
