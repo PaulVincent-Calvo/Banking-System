@@ -5,3 +5,6 @@ https://www.figma.com/file/aecHtykWSrPuoVpnHosZYl/Treasury-Citadel?type=design&n
 
 Customer Login Page
 https://www.figma.com/file/110Qsa0F54qgrD5xlCamVt/Customer-Login-Page?type=design&node-id=0-1&mode=design&t=3tGiztIpK4T6PFPb-0
+
+Employee Landing Page
+https://www.figma.com/file/gVts6cmqI8ELMzEs2y2kq0/Untitled?type=design&node-id=0-1&mode=design&t=71EBEA6ImPO9q6qP-0
