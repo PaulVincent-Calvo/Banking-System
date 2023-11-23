@@ -4,7 +4,7 @@ from tabulate import tabulate
 import tkinter as tk
 
 
-class Test(BankingMethods):
+class Employee(BankingMethods):
     def __init__(self):
         super().__init__()  
 
@@ -23,9 +23,33 @@ class Test(BankingMethods):
 
         return transactions
     
+    def transaction_button_clicked(self, id_entry, root):
+        root.destroy()
+        self.transaction_page(id_entry)
+
     def get_customer_info(self):
         cursor = self.connection.cursor()
-        get_info_query = f"SELECT * FROM customer_information JOIN checkings_account ON customer_information.customer_id = checkings_account.customer_id;"
+        # get_info_query = f"SELECT * FROM customer_information JOIN checkings_account ON customer_information.customer_id = checkings_account.customer_id;"
+        get_info_query = """
+            SELECT 
+                customer_information.customer_id, 
+                customer_information.customer_password, 
+                customer_information.first_name, 
+                customer_information.last_name, 
+                customer_information.email, 
+                customer_information.address, 
+                customer_information.id_type, 
+                customer_information.occupation, 
+                customer_information.annual_gross_income, 
+                checkings_account.checkings_id, 
+                checkings_account.balance
+            FROM 
+                customer_information 
+            JOIN 
+                checkings_account 
+            ON 
+                customer_information.customer_id = checkings_account.customer_id;"""
+        
         cursor.execute(get_info_query)
 
         account_info_rows = cursor.fetchall()
@@ -37,6 +61,11 @@ class Test(BankingMethods):
         accoount_info = tabulate(account_info_rows, headers=column_names,tablefmt="grid")
         
         return accoount_info
+    
+    def customer_accounts_button_clicked(self, id_entry, root):
+        root.destroy()
+        self.customer_accounts_page(id_entry)
+
     def test(self):
         try:
             self.connect_database()
@@ -71,39 +100,93 @@ class Test(BankingMethods):
 
         login_root.mainloop()
 
-    def main_page(self, id_entry):
+    def customer_accounts_page(self, id_entry):
         main_root = tk.Tk()
-        main_root.geometry("1400x500")
+        main_root.geometry("900x500")
 
         # frames
-        side_frame = tk.Frame(main_root, width = 300, height = 500)
+        secondary_frame = tk.Frame(main_root, width = 300, height = 500)
         main_frame = tk.Frame(main_root, width = 700, height = 500)
 
-        # content on side frame (Employee Name and Buttons)
+        # content on secondary frame (Employee Name and Buttons)
         first_name, last_name = self.get_name(id_entry, 1)
-        employee_name_label = tk.Label(side_frame, text=f"Welcome {first_name} {last_name}!")
+        employee_name_label = tk.Label(secondary_frame, text=f"Welcome {first_name} {last_name}!")
         employee_name_label.pack(side="top", pady=10)
 
-        side_frame.pack(side="left", fill="y")
+        secondary_frame.pack(side="top", fill="y")
 
-        # content on main frame (Transaction Tables)
-        transactions = self.get_customer_info()
-        transactions_text = tk.Text(main_frame, height=10, width=50)
-        transactions_text.insert(tk.END, transactions)
-        transactions_text.config(state="disabled")
-        transactions_text.pack(side="left", fill="both", padx=40, expand=True)
+        view_transactions_button = tk.Button(secondary_frame, text="Transactions", command=lambda: self.transaction_button_clicked(id_entry, main_root))
+        create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts")
+        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts")
+        edit_customer_information = tk.Button(secondary_frame, text="Edit Customer Information")
 
-        # scrollbar for the table if it has many content
-        scrollbar = tk.Scrollbar(main_frame, command=transactions_text.yview)
-        scrollbar.pack(side="right", fill="y")
-        transactions_text.config(yscrollcommand=scrollbar.set)
+        view_transactions_button.pack(side="left", padx=5)
+        create_customer_accounts.pack(side="left", padx=5)
+        delete_accounts.pack(side="left", padx=5)
+        edit_customer_information.pack(side="left", padx=5)
 
-        main_frame.pack(side="left", fill="both", expand=True)
+        # content on main frame
+        account_info = self.get_customer_info()
+        account_info_text = tk.Text(main_frame, height=10, width=50, wrap=tk.NONE)
+        account_info_text.insert(tk.END, account_info)
+        account_info_text.config(state="disabled")
+        account_info_text.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        #---------------------------
-        main_root.mainloop()
+        # scrollbars for the table if it has many content
+        vertical_scrollbar = tk.Scrollbar(main_frame, command=account_info_text.yview)
+        vertical_scrollbar.grid(row=0, column=1, sticky="ns")
+        account_info_text.config(yscrollcommand=vertical_scrollbar.set)
 
-test_instance = Test()
+        horizontal_scrollbar = tk.Scrollbar(main_frame, orient=tk.HORIZONTAL, command=account_info_text.xview)
+        horizontal_scrollbar.grid(row=1, column=0, sticky="ew")  # Place it at the top
+        account_info_text.config(xscrollcommand=horizontal_scrollbar.set)
+
+        main_frame.pack(side="top", fill="both", expand=True)
+        main_frame.grid_rowconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
+
+    def transaction_page(self, id_entry):
+        transaction_root = tk.Tk()
+        transaction_root.geometry("900x500")
+
+        secondary_frame = tk.Frame(transaction_root, width = 300, height = 500)
+        main_frame = tk.Frame(transaction_root, width = 400, height = 500)
+
+        # content on secondary frame (Employee Name and Buttons)
+        first_name, last_name = self.get_name(id_entry, 1)
+        employee_name_label = tk.Label(secondary_frame, text=f"Welcome {first_name} {last_name}!")
+        employee_name_label.pack(side="top", pady=10)
+
+        secondary_frame.pack(side="top", fill="y")
+
+        customer_accounts_button = tk.Button(secondary_frame, text="Customer Accounts", command=lambda: self.customer_accounts_button_clicked(id_entry, transaction_root))
+        create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts")
+        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts")
+        edit_customer_information = tk.Button(secondary_frame, text="Edit Customer Information")
+
+        customer_accounts_button.pack(side="left", padx=5)
+        create_customer_accounts.pack(side="left", padx=5)
+        delete_accounts.pack(side="left", padx=5)
+        edit_customer_information.pack(side="left", padx=5)
+
+        # content on main frame
+        transaction_info = self.get_transactions()
+        transaction_info_text = tk.Text(main_frame, height=10, width=50, wrap=tk.NONE)
+        transaction_info_text.insert(tk.END, transaction_info)
+        transaction_info_text.config(state="disabled")
+        transaction_info_text.pack(side="top",fill="y", padx=20, pady=10, expand=True)  # Use pack instead of grid
+
+        # scrollbar for the table if it has many contents
+        vertical_scrollbar = tk.Scrollbar(main_frame, command=transaction_info_text.yview)
+        vertical_scrollbar.pack(side="right", fill="y")  # Set side and fill options
+
+        transaction_info_text.config(yscrollcommand=vertical_scrollbar.set)
+
+        main_frame.pack(side="top", fill="both", expand=True)
+
+        transaction_root.mainloop()
+
+test_instance = Employee()
 test_instance.test()
 # print(test_instance.get_transactions())
 test_instance.login_page()
