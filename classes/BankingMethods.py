@@ -32,7 +32,7 @@ class BankingMethods(ABC, DatabaseConnector):
                 cursor.close()
                 messagebox.showinfo("Login Successful", "Login Successful")
                 login_root.destroy() # closes login page
-                self.main_page(id_entry)
+                self.customer_accounts_page(id_entry)
             else:
                 cursor.close()
                 messagebox.showerror("Login Failed", "Incorrect ID/Password")
