@@ -78,6 +78,21 @@ SELECT
 SELECT * FROM all_records;
 
 
+-- VIEW for Customer ID, Fullname, Email, and Checkings ID
+CREATE VIEW Customer_Info_CheckingID AS
+SELECT 
+  customer_information.customer_id, 
+  CONCAT(customer_information.first_name, ' ', customer_information.last_name) AS FullName, 
+  customer_information.email, 
+  checkings_account.checkings_id
+FROM 
+  customer_information
+INNER JOIN 
+  checkings_account ON customer_information.customer_id = checkings_account.customer_id;
+
+
+SELECT * FROM Customer_Info_CheckingID;
+
 
 
 
