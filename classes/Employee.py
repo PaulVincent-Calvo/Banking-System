@@ -22,24 +22,24 @@ class Employee(BankingMethods):
 
         return transactions
 
-    def emp_search_transactions(self):
-        search_root = tk.Tk()
-        search_root.geometry("300x200")
-        search_root.title("Search Transactions Page")
+    def emp_search_transaction(self):
+        search_transactions_root = tk.Tk()
+        search_transactions_root.geometry("300x200")
+        search_transactions_root.title("Search Transactions Page")
 
-        search_frame = tk.Frame(search_root, width=300,)
+        search_frame = tk.Frame(search_transactions_root, width=300,)
 
         search_transaction_id_label = tk.Label(search_frame, text="Transaction ID:")
         search_transaction_id_entry = tk.Entry(search_frame)
 
-        search_transaction_button = tk.Button(search_frame, text="Search", command=lambda: self.search_transaction_button_clicked(search_transaction_id_entry, search_root))
+        search_transaction_button = tk.Button(search_frame, text="Search", command=lambda: self.search_transaction_button_clicked(search_transaction_id_entry, search_transactions_root))
 
         search_frame.pack(expand=True, fill="none", side="top")
         search_transaction_id_label.pack()
         search_transaction_id_entry.pack()
         search_transaction_button.pack(pady=10)
 
-        search_root.mainloop()
+        search_transactions_root.mainloop()
 
     def search_transaction_button_clicked(self, transaction_id ,root):
         transaction_id = transaction_id.get()
@@ -81,7 +81,8 @@ class Employee(BankingMethods):
 
     def get_customer_info(self):
         cursor = self.connection.cursor()
-        # get_info_query = f"SELECT * FROM customer_information JOIN checkings_account ON customer_information.customer_id = checkings_account.customer_id;"
+
+        # query too long so changed its fromat to this
         get_info_query = """
             SELECT 
                 customer_information.customer_id, 
@@ -117,6 +118,59 @@ class Employee(BankingMethods):
     def customer_accounts_button_clicked(self, id_entry, root):
         root.destroy()
         self.customer_accounts_page(id_entry)
+
+    def emp_search_account(self):
+        search_account_root = tk.Tk()
+        search_account_root.geometry("300x200")
+        search_account_root.title("Search Accounts Page")
+
+        search_frame = tk.Frame(search_account_root, width=300,)
+
+        search_account_id_label = tk.Label(search_frame, text="Account ID:")
+        search_account_id_entry = tk.Entry(search_frame)
+
+        search_account_button = tk.Button(search_frame, text="Search", command=lambda: self.search_account_button_clicked(search_account_id_entry, search_account_root))
+
+        search_frame.pack(expand=True, fill="none", side="top")
+        search_account_id_label.pack()
+        search_account_id_entry.pack()
+        search_account_button.pack(pady=10)
+
+        search_account_root.mainloop()
+
+    def search_account_button_clicked(self, customer_id ,root):
+        customer_id = customer_id.get()
+        
+        if self.search_accounts(customer_id, 1):
+            root.destroy() 
+
+            account_found_root = tk.Tk()
+            account_found_root.geometry("900x170")
+            account_found_root.title("Account Search Result Page")
+
+            secondary_frame = tk.Frame(account_found_root, width = 300, height = 50)
+            main_frame = tk.Frame(account_found_root, width = 700, height = 100)
+
+            # content on secondary frame (Transaction Found Label)
+            account_found_label = tk.Label(secondary_frame, text="Account Found!")
+            account_found_label.pack(side="top", pady=10)
+
+            secondary_frame.pack(side="top", fill="y")
+
+            # content on main frame (Transaction Table)
+            account_info = self.search_accounts(customer_id, 1) 
+            account_info_text = tk.Text(main_frame, height=5.2, width=140, wrap=tk.NONE)
+            account_info_text.insert(tk.END, account_info)
+            account_info_text.config(state="disabled")
+            account_info_text.pack(side="top", padx=10, pady=10) 
+
+            # horizontal scrollbar 
+            horizontal_scrollbar = tk.Scrollbar(main_frame, orient="horizontal", command=account_info_text.xview)
+            horizontal_scrollbar.pack(side="bottom", fill="x")
+            
+            main_frame.pack(side="top", fill="y")
+
+            account_found_root.mainloop()
 
     def test(self):
         try:
@@ -168,7 +222,7 @@ class Employee(BankingMethods):
 
         secondary_frame.pack(side="top", fill="y")
 
-        search_button = tk.Button(secondary_frame, text="Search")
+        search_button = tk.Button(secondary_frame, text="Search", command=lambda: self.emp_search_account())
         view_transactions_button = tk.Button(secondary_frame, text="Transactions", command=lambda: self.transaction_button_clicked(id_entry, main_root))
         create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts")
         delete_accounts = tk.Button(secondary_frame, text="Delete Accounts")
@@ -215,7 +269,7 @@ class Employee(BankingMethods):
 
         secondary_frame.pack(side="top", fill="y")
 
-        search_button = tk.Button(secondary_frame, text="Search", command=lambda: self.emp_search_transactions())
+        search_button = tk.Button(secondary_frame, text="Search", command=lambda: self.emp_search_transaction())
         customer_accounts_button = tk.Button(secondary_frame, text="Customer Accounts", command=lambda: self.customer_accounts_button_clicked(id_entry, transaction_root))
 
         search_button.pack(side="left", padx=5)
