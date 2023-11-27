@@ -83,7 +83,6 @@ class BankingMethods(ABC, DatabaseConnector):
                 return first_name, last_name, balance
 
     def search_transactions(self, id_entry, type):
-        # id_entry = id_entry.get()
         cursor = self.connection.cursor()
 
         if type == 1:
@@ -112,4 +111,79 @@ class BankingMethods(ABC, DatabaseConnector):
             transactions = tabulate(transactions_rows, headers=column_names, tablefmt='grid')
             cursor.close()
             return transactions
+        
+    def search_accounts(self, id_entry, type):
+        cursor = self.connection.cursor()
+
+        if type == 1:
+            search_accounts_query = f"""
+                SELECT 
+                    customer_information.customer_id, 
+                    customer_information.customer_password, 
+                    customer_information.first_name, 
+                    customer_information.last_name, 
+                    customer_information.email, 
+                    customer_information.address, 
+                    customer_information.id_type, 
+                    customer_information.occupation, 
+                    customer_information.annual_gross_income, 
+                    checkings_account.checkings_id, 
+                    checkings_account.balance
+                FROM 
+                    customer_information 
+                JOIN 
+                    checkings_account 
+                ON 
+                    customer_information.customer_id = checkings_account.customer_id
+                WHERE
+                    customer_information.customer_id = {id_entry};"""
+
+            cursor.execute(search_accounts_query)
+            account_row = cursor.fetchone() 
+
+            if account_row:
+                column_names = ["Customer ID", "Password", "First Name", "Last Name", 
+                                "Email", "Address", "ID Type", "Occupation", 
+                                "Annual Gross Income", "Checkings ID", "Balance"]
+                account_info = tabulate([account_row], headers=column_names, tablefmt='grid')
+                cursor.close()
+                return account_info
+            
+            else:
+                cursor.close()
+                messagebox.showerror("Search Failed", "No Accounts with that ID")
+
+        else: 
+            search_accounts_query = f"""
+                SELECT 
+                    customer_information.customer_id, 
+                    customer_information.customer_password, 
+                    customer_information.first_name, 
+                    customer_information.last_name, 
+                    customer_information.email, 
+                    customer_information.address, 
+                    customer_information.id_type, 
+                    customer_information.occupation, 
+                    customer_information.annual_gross_income, 
+                    checkings_account.checkings_id, 
+                    checkings_account.balance
+                FROM 
+                    customer_information 
+                JOIN 
+                    checkings_account 
+                ON 
+                    customer_information.customer_id = checkings_account.customer_id
+                WHERE
+                    customer_information.customer_id = {id_entry};"""
+
+            cursor.execute(search_accounts_query)
+            account_rows = cursor.fetchall() 
+
+            column_names = ["Customer ID", "Password", "First Name", "Last Name", 
+                            "Email", "Address", "ID Type", "Occupation", 
+                            "Annual Gross Income", "Checkings ID", "Balance"]
+            
+            account_info = tabulate(account_rows, headers=column_names, tablefmt='grid')
+            cursor.close()
+            return account_info
             
