@@ -172,6 +172,68 @@ class Employee(BankingMethods):
 
             account_found_root.mainloop()
 
+    def delete_account(self, customer_id, delete_account_root, emp_id_entry, main_root):
+        cursor = self.connection.cursor()
+        successful = False
+
+        try:
+            customer_id = customer_id.get()
+
+            # done this way because of the constraint in customer_information table as a parent table
+            delete_bank_asset_row_query = f"""
+                DELETE FROM bank_assets
+                WHERE checkings_id IN (SELECT checkings_id FROM checkings_account WHERE customer_id = {customer_id});
+            """
+            cursor.execute(delete_bank_asset_row_query)
+
+            delete_checkings_account_row_query = f"""
+                DELETE FROM checkings_account
+                WHERE customer_id = {customer_id};
+            """
+            cursor.execute(delete_checkings_account_row_query)
+
+            delete_customer_information_row_query = f"""
+                DELETE FROM customer_information
+                WHERE customer_id = {customer_id};
+            """
+            cursor.execute(delete_customer_information_row_query)
+
+            self.connection.commit()
+
+            messagebox.showinfo("Success", "Account deleted successfully!")
+
+            cursor.close()
+            successful = True
+
+        except Exception as e:
+            # Display error messagebox
+            messagebox.showerror("Error", f"Unable to delete account. Error: {str(e)}")
+            print(e)
+
+        if successful:
+            delete_account_root.destroy()
+            main_root.destroy()
+            self.customer_accounts_page(emp_id_entry)
+
+    def emp_delete_account(self, emp_id_entry, main_root):
+        delete_account_root = tk.Tk()
+        delete_account_root.geometry("300x200")
+        delete_account_root.title("Delete Accounts Page")
+
+        delete_frame = tk.Frame(delete_account_root, width=300,)
+
+        delete_account_id_label = tk.Label(delete_frame, text="Account ID:")
+        delete_account_id_entry = tk.Entry(delete_frame)
+
+        delete_account_button = tk.Button(delete_frame, text="Delete", command=lambda: self.delete_account(delete_account_id_entry, delete_account_root, emp_id_entry, main_root))
+
+        delete_frame.pack(expand=True, fill="none", side="top")
+        delete_account_id_label.pack()
+        delete_account_id_entry.pack()
+        delete_account_button.pack(pady=10)
+
+        delete_account_root.mainloop()
+
     def test(self):
         try:
             self.connect_database()
@@ -225,7 +287,7 @@ class Employee(BankingMethods):
         search_button = tk.Button(secondary_frame, text="Search", command=lambda: self.emp_search_account())
         view_transactions_button = tk.Button(secondary_frame, text="Transactions", command=lambda: self.transaction_button_clicked(id_entry, main_root))
         create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts")
-        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts")
+        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts", command=lambda: self.emp_delete_account(id_entry))
         edit_customer_information = tk.Button(secondary_frame, text="Edit Customer Information")
 
         search_button.pack(side="left", padx=5)
