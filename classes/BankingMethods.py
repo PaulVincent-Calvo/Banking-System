@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from DatabaseConnector import DatabaseConnector
 from tkinter import messagebox
+from tabulate import tabulate
 import tkinter as tk
 
 class BankingMethods(ABC, DatabaseConnector):
@@ -81,6 +82,34 @@ class BankingMethods(ABC, DatabaseConnector):
                 first_name, last_name = "N/A"
                 return first_name, last_name, balance
 
-    @abstractmethod
-    def get_transactions(self):
-        pass
+    def search_transactions(self, id_entry, type):
+        # id_entry = id_entry.get()
+        cursor = self.connection.cursor()
+
+        if type == 1:
+            search_transactions_query = f"SELECT * FROM transactions WHERE transaction_id = {id_entry}"
+
+            cursor.execute(search_transactions_query)
+            transaction_row = cursor.fetchone() 
+
+            if transaction_row:
+                column_names = ["Transaction ID", "Checkings ID", "Date", "Time", "Amount", "Transaction Type"]
+                transactions = tabulate([transaction_row], headers=column_names, tablefmt='grid')
+                cursor.close()
+                return transactions
+            
+            else:
+                cursor.close()
+                messagebox.showerror("Search Failed", "No Transactions with that ID")
+
+        else: 
+            search_transactions_query = f"SELECT * FROM transactions WHERE customer_id = {id_entry}"
+
+            cursor.execute(search_transactions_query)
+            transactions_rows = cursor.fetchall() 
+
+            column_names = ["Transaction ID", "Checkings ID", "Date", "Time", "Amount", "Transaction Type"]
+            transactions = tabulate(transactions_rows, headers=column_names, tablefmt='grid')
+            cursor.close()
+            return transactions
+            
