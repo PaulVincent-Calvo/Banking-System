@@ -117,7 +117,7 @@ class Employee(BankingMethods):
     
     def customer_accounts_button_clicked(self, id_entry, root):
         root.destroy()
-        self.customer_accounts_page(id_entry)
+        self.customer_account_page(id_entry)
 
     def emp_search_account(self):
         search_account_root = tk.Tk()
@@ -213,7 +213,7 @@ class Employee(BankingMethods):
         if successful:
             delete_account_root.destroy()
             main_root.destroy()
-            self.customer_accounts_page(emp_id_entry)
+            self.customer_account_page(emp_id_entry)
 
     def emp_delete_account(self, emp_id_entry, main_root):
         delete_account_root = tk.Tk()
@@ -233,6 +233,138 @@ class Employee(BankingMethods):
         delete_account_button.pack(pady=10)
 
         delete_account_root.mainloop()
+
+    def create_account(self, password, first_name, last_name, email, address, id_type,occupation, annual_gross_income, balance, create_acc_root, id_entry, root):
+        if not all([password.get(), first_name.get(), last_name.get(), email.get(), address.get(), id_type.get(), occupation.get(), annual_gross_income.get(), balance.get()]):
+            messagebox.showerror("Error", "Please fill in all fields")
+            return
+
+        try:
+            float(balance.get())
+            float(annual_gross_income.get())
+        except ValueError:
+            messagebox.showerror("Error", "Invalid Balance and/or Annual Gross Income. Please enter a valid number.")
+            return
+
+        password = password.get()
+        first_name = first_name.get()
+        last_name = last_name.get()
+        email = email.get()
+        address = address.get()
+        id_type = id_type.get()
+        occupation = occupation.get()
+        annual_gross_income = annual_gross_income.get()
+        balance = balance.get()
+
+        cursor = self.connection.cursor()
+
+        try:
+            # Start a transaction
+            self.connection.start_transaction()
+
+            create_customer_query = f"""
+                INSERT INTO customer_information (customer_password, first_name, last_name, email, address, id_type, occupation, annual_gross_income)
+                VALUES ("{password}","{first_name}","{last_name}","{email}","{address}","{id_type}", "{occupation}", "{annual_gross_income}");
+                """
+
+            cursor.execute(create_customer_query)
+            self.connection.commit()
+
+            cursor.execute("SELECT LAST_INSERT_ID();")
+            customer_id = cursor.fetchone()[0]
+
+            create_checkings_query = f""" 
+                INSERT INTO checkings_account (customer_id, balance)
+                VALUES ({customer_id}, {balance});
+                """
+            cursor.execute(create_checkings_query)
+            self.connection.commit()
+
+            cursor.execute("SELECT LAST_INSERT_ID();")
+            checkings_id = cursor.fetchone()[0]
+
+            create_bank_asset_query = f"""
+                INSERT INTO checkings_account (customer_id, balance)
+                VALUES ({checkings_id}, {balance});
+                """
+            cursor.execute(create_bank_asset_query)
+
+            self.connection.commit()
+            messagebox.showinfo("Success", "New account created successfully!")
+            create_acc_root.destroy()
+            root.destroy()
+            self.customer_account_page(id_entry)
+
+        except Exception as e:
+            self.connection.rollback()
+            messagebox.showerror("Error", f"Error: {e}")
+
+        finally:
+            cursor.close()
+
+    def emp_create_account(self, root, id_entry):
+        create_acc_root = tk.Tk()
+        create_acc_root.geometry("480x270")
+        create_acc_root.title("Account Creation Page")
+
+        create_acc_frame_left = tk.Frame(create_acc_root)
+        create_acc_frame_right = tk.Frame(create_acc_root)
+
+        # Content for left frame
+        password_label = tk.Label(create_acc_frame_left, text="Password")
+        password_label.pack(side="top", pady=2)
+        password_entry = tk.Entry(create_acc_frame_left, width=20)
+        password_entry.pack(side="top", pady=2)
+
+        first_name_label = tk.Label(create_acc_frame_left, text="First Name")
+        first_name_label.pack(side="top", pady=2)
+        first_name_entry = tk.Entry(create_acc_frame_left, width=20)
+        first_name_entry.pack(side="top", pady=2)
+
+        last_name_label = tk.Label(create_acc_frame_left, text="Last Name")
+        last_name_label.pack(side="top", pady=2)
+        last_name_entry = tk.Entry(create_acc_frame_left, width=20)
+        last_name_entry.pack(side="top", pady=2)
+
+        email_label = tk.Label(create_acc_frame_left, text="Email")
+        email_label.pack(side="top", pady=2)
+        email_entry = tk.Entry(create_acc_frame_left, width=20)
+        email_entry.pack(side="top", pady=2)
+
+        address_label = tk.Label(create_acc_frame_left, text="Address")
+        address_label.pack(side="top", pady=2)
+        address_entry = tk.Entry(create_acc_frame_left, width=20)
+        address_entry.pack(side="top", pady=2)
+        
+        create_acc_frame_left.pack(side="left", padx=10, fill="both", expand=True)
+
+        # Content for right frame
+        id_type_label = tk.Label(create_acc_frame_right, text="ID Type")
+        id_type_label.pack(side="top", pady=2)
+        id_type_entry = tk.Entry(create_acc_frame_right, width=20)
+        id_type_entry.pack(side="top", pady=2)
+
+        occupation_label = tk.Label(create_acc_frame_right, text="Occupation")
+        occupation_label.pack(side="top", pady=2)
+        occupation_entry = tk.Entry(create_acc_frame_right, width=20)
+        occupation_entry.pack(side="top", pady=2)
+
+        annual_gross_income_label = tk.Label(create_acc_frame_right, text="Annual gross Income")
+        annual_gross_income_label.pack(side="top", pady=2)
+        annual_gross_income_entry = tk.Entry(create_acc_frame_right, width=20)
+        annual_gross_income_entry.pack(side="top", pady=2)
+
+        balance_label = tk.Label(create_acc_frame_right, text="Balance")
+        balance_label.pack(side="top", pady=2)
+        balance_entry = tk.Entry(create_acc_frame_right, width=20)
+        balance_entry.pack(side="top", pady=2)
+
+        create_button = tk.Button(create_acc_frame_right, text="Create", command=lambda: self.create_account(password_entry, first_name_entry, last_name_entry, email_entry, address_entry, id_type_entry, occupation_entry, annual_gross_income_entry, balance_entry, create_acc_root, id_entry, root))
+        create_button.pack(side="top", pady=26)
+        
+        create_acc_frame_right.pack(side="left", padx=10, fill="both", expand=True)
+
+        create_acc_root.mainloop()
 
     def test(self):
         try:
@@ -268,7 +400,7 @@ class Employee(BankingMethods):
 
         login_root.mainloop()
 
-    def customer_accounts_page(self, id_entry):
+    def customer_account_page(self, id_entry):
         main_root = tk.Tk()
         main_root.geometry("900x500")
         main_root.title("Customer Accounts Page")
@@ -286,8 +418,8 @@ class Employee(BankingMethods):
 
         search_button = tk.Button(secondary_frame, text="Search", command=lambda: self.emp_search_account())
         view_transactions_button = tk.Button(secondary_frame, text="Transactions", command=lambda: self.transaction_button_clicked(id_entry, main_root))
-        create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts")
-        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts", command=lambda: self.emp_delete_account(id_entry))
+        create_customer_accounts = tk.Button(secondary_frame, text="Create Accounts", command=lambda: self.emp_create_account(main_root, id_entry))
+        delete_accounts = tk.Button(secondary_frame, text="Delete Accounts", command=lambda: self.emp_delete_account(id_entry, main_root))
         edit_customer_information = tk.Button(secondary_frame, text="Edit Customer Information")
 
         search_button.pack(side="left", padx=5)
@@ -363,5 +495,6 @@ class Employee(BankingMethods):
 
 test_instance = Employee()
 test_instance.test()
+# test_instance.emp_create_account()
 # print(test_instance.get_transactions())
 test_instance.login_page()
