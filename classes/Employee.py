@@ -253,18 +253,16 @@ class Employee(BankingMethods):
         address = address.get()
         id_type = id_type.get()
         occupation = occupation.get()
-        annual_gross_income = annual_gross_income.get()
-        balance = balance.get()
+        annual_gross_income = float(annual_gross_income.get())
+        balance = float(balance.get())
 
         cursor = self.connection.cursor()
+        self.connection.commit()
 
         try:
-            # Start a transaction
-            self.connection.start_transaction()
-
             create_customer_query = f"""
                 INSERT INTO customer_information (customer_password, first_name, last_name, email, address, id_type, occupation, annual_gross_income)
-                VALUES ("{password}","{first_name}","{last_name}","{email}","{address}","{id_type}", "{occupation}", "{annual_gross_income}");
+                VALUES ("{password}", "{first_name}", "{last_name}", "{email}", "{address}", "{id_type}", "{occupation}", {annual_gross_income});
                 """
 
             cursor.execute(create_customer_query)
@@ -284,19 +282,20 @@ class Employee(BankingMethods):
             checkings_id = cursor.fetchone()[0]
 
             create_bank_asset_query = f"""
-                INSERT INTO checkings_account (customer_id, balance)
+                INSERT INTO bank_assets (checkings_id, checkings_balance)
                 VALUES ({checkings_id}, {balance});
                 """
             cursor.execute(create_bank_asset_query)
 
             self.connection.commit()
             messagebox.showinfo("Success", "New account created successfully!")
+            root.destroy()            
             create_acc_root.destroy()
-            root.destroy()
             self.customer_account_page(id_entry)
 
         except Exception as e:
             self.connection.rollback()
+            print(e)
             messagebox.showerror("Error", f"Error: {e}")
 
         finally:
