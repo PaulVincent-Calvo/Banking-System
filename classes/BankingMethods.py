@@ -31,9 +31,16 @@ class BankingMethods(ABC, DatabaseConnector):
             stored_user_id, stored_user_password = login_query_result
             if password_entry == stored_user_password:
                 cursor.close()
-                messagebox.showinfo("Login Successful", "Login Successful")
-                login_root.destroy() # closes login page
-                self.customer_accounts_page(id_entry)
+                if type == 1:                    
+                    login_root.destroy()                     
+                    messagebox.showinfo("Login Successful", "Login Successful")
+                    self.customer_account_page(id_entry)
+
+                elif type == 2:
+                    login_root.destroy()                     
+                    messagebox.showinfo("Login Successful", "Login Successful")
+                    self.transaction_page(id_entry)
+
             else:
                 cursor.close()
                 messagebox.showerror("Login Failed", "Incorrect ID/Password")
@@ -102,7 +109,7 @@ class BankingMethods(ABC, DatabaseConnector):
                 messagebox.showerror("Search Failed", "No Transactions with that ID")
 
         else: 
-            search_transactions_query = f"SELECT * FROM transactions WHERE customer_id = {id_entry}"
+            search_transactions_query = f"SELECT * FROM transactions WHERE checkings_id = {id_entry}"
 
             cursor.execute(search_transactions_query)
             transactions_rows = cursor.fetchall() 
