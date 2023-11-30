@@ -18,6 +18,70 @@ ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ace\Downloads\OOP Recent Commits\Ban
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
+def deposit_money():
+    user_id = id_entry.get()
+
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if user:
+        amount = float(deposit_entry.get())
+
+        if amount > 0:
+            updated_balance = user[3] + amount
+            cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (updated_balance, user_id))
+            conn.commit()
+            status_label.config(text=f"${amount:.2f} deposited successfully! New balance: ${updated_balance:.2f}")
+        else:
+            status_label.config(text="Please enter a valid deposit amount.")
+    else:
+        status_label.config(text="User not found.")
+
+def withdraw_money():
+    user_id = id_entry.get()
+
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if user:
+        amount = float(withdraw_entry.get())
+
+        if amount > 0 and user[3] >= amount:
+            updated_balance = user[3] - amount
+            cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (updated_balance, user_id))
+            conn.commit()
+            status_label.config(text=f"${amount:.2f} withdrawn successfully! New balance: ${updated_balance:.2f}")
+        else:
+            status_label.config(text="Withdrawal failed. Please check the amount or balance.")
+    else:
+        status_label.config(text="User not found.")
+
+def transfer_balance():
+    sender_id = sender_entry.get()
+    receiver_id = receiver_entry.get()
+
+    sender_cursor = conn.cursor()
+    sender_cursor.execute("SELECT * FROM users WHERE id = ?", (sender_id,))
+    sender = sender_cursor.fetchone()
+
+    receiver_cursor = conn.cursor()
+    receiver_cursor.execute("SELECT * FROM users WHERE id = ?", (receiver_id,))
+    receiver = receiver_cursor.fetchone()
+
+    transfer_amount = float(transfer_entry.get())
+
+    if sender and receiver and transfer_amount > 0 and sender[3] >= transfer_amount:
+        sender_updated_balance = sender[3] - transfer_amount
+        receiver_updated_balance = receiver[3] + transfer_amount
+
+        sender_cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (sender_updated_balance, sender_id))
+        receiver_cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (receiver_updated_balance, receiver_id))
+
+        conn.commit()
+        status_label.config(text=f"${transfer_amount:.2f} transferred from User {sender_id} to User {receiver_id}.")
+    else:
+        status_label.config(text="Transfer failed. Please check IDs and ensure sufficient balance.")
+
 
 window = Tk()
 
