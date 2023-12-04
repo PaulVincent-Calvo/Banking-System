@@ -23,13 +23,11 @@ while True:
     choice = input("\nEnter your choice (1, 2, or 3): ")
 
     if choice == '1':
-        print(1)
         object1 = Employee()
         object1.connect()
         object1.login_page()
 
     elif choice == '2':
-        print(2)
         object2 = Customer()
         object2.connect()
         object2.login_page()
