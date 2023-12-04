@@ -17,9 +17,6 @@ class DatabaseConnector():
         except mysql.connector.Error as err:
             raise ConnectionError(f"Database Connection Error: {err}")
 
-    def database_connection_error(self, message):
-        print(message)
-
     def close_database(self):
         if self.connection is not None:
             self.connection.close()
