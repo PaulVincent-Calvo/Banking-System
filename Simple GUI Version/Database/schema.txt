@@ -1,0 +1,1 @@
+database schema: https://bitly.ws/34s65
