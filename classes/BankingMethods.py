@@ -5,14 +5,13 @@ from tabulate import tabulate
 import tkinter as tk
 
 class BankingMethods(ABC, DatabaseConnector):
-
     def check_database_connection(self):
         if self.connection is not None:
             return True
         else:
             return False
     
-    def login(self, login_root, id_entry, password_entry, type):
+    def login(self, login_page_root, id_entry, password_entry, type):
         id_entry = id_entry.get()
         password_entry = password_entry.get()
 
@@ -32,14 +31,14 @@ class BankingMethods(ABC, DatabaseConnector):
             if password_entry == stored_user_password:
                 cursor.close()
                 if type == 1:                    
-                    login_root.destroy()                     
+                    login_page_root.destroy()                     
                     messagebox.showinfo("Login Successful", "Login Successful")
-                    self.customer_account_page(id_entry)
+                    self.customer_accounts_page(id_entry)
 
                 elif type == 2:
-                    login_root.destroy()                     
+                    login_page_root.destroy()                     
                     messagebox.showinfo("Login Successful", "Login Successful")
-                    self.transaction_page(id_entry)
+                    self.personal_transaction_page(id_entry)
 
             else:
                 cursor.close()
@@ -93,9 +92,9 @@ class BankingMethods(ABC, DatabaseConnector):
         cursor = self.connection.cursor()
 
         if type == 1:
-            search_transactions_query = f"SELECT * FROM transactions WHERE transaction_id = {id_entry}"
+            search_transactions_query = "SELECT * FROM transactions WHERE transaction_id = %s"
 
-            cursor.execute(search_transactions_query)
+            cursor.execute(search_transactions_query, (id_entry,))
             transaction_row = cursor.fetchone() 
 
             if transaction_row:
@@ -109,9 +108,9 @@ class BankingMethods(ABC, DatabaseConnector):
                 messagebox.showerror("Search Failed", "No Transactions with that ID")
 
         else: 
-            search_transactions_query = f"SELECT * FROM transactions WHERE checkings_id = {id_entry}"
+            search_transactions_query = "SELECT * FROM transactions WHERE checkings_id = %s"
 
-            cursor.execute(search_transactions_query)
+            cursor.execute(search_transactions_query, (id_entry,))
             transactions_rows = cursor.fetchall() 
 
             column_names = ["Transaction ID", "Checkings ID", "Date", "Time", "Amount", "Transaction Type"]
@@ -123,7 +122,7 @@ class BankingMethods(ABC, DatabaseConnector):
         cursor = self.connection.cursor()
 
         if type == 1:
-            search_accounts_query = f"""
+            search_accounts_query = """
                 SELECT 
                     customer_information.customer_id, 
                     customer_information.customer_password, 
@@ -143,9 +142,10 @@ class BankingMethods(ABC, DatabaseConnector):
                 ON 
                     customer_information.customer_id = checkings_account.customer_id
                 WHERE
-                    customer_information.customer_id = {id_entry};"""
+                    customer_information.customer_id = %s;
+            """
 
-            cursor.execute(search_accounts_query)
+            cursor.execute(search_accounts_query, (id_entry,))
             account_row = cursor.fetchone() 
 
             if account_row:
@@ -161,7 +161,7 @@ class BankingMethods(ABC, DatabaseConnector):
                 messagebox.showerror("Search Failed", "No Accounts with that ID")
 
         else: 
-            search_accounts_query = f"""
+            search_accounts_query = """
                 SELECT 
                     customer_information.customer_id, 
                     customer_information.customer_password, 
@@ -172,8 +172,7 @@ class BankingMethods(ABC, DatabaseConnector):
                     customer_information.id_type, 
                     customer_information.occupation, 
                     customer_information.annual_gross_income, 
-                    checkings_account.checkings_id, 
-                    checkings_account.balance
+                    checkings_account.checkings_id
                 FROM 
                     customer_information 
                 JOIN 
@@ -181,16 +180,16 @@ class BankingMethods(ABC, DatabaseConnector):
                 ON 
                     customer_information.customer_id = checkings_account.customer_id
                 WHERE
-                    customer_information.customer_id = {id_entry};"""
+                    customer_information.customer_id = %s;
+            """
 
-            cursor.execute(search_accounts_query)
+            cursor.execute(search_accounts_query, (id_entry,))
             account_rows = cursor.fetchall() 
 
             column_names = ["Customer ID", "Password", "First Name", "Last Name", 
                             "Email", "Address", "ID Type", "Occupation", 
-                            "Annual Gross Income", "Checkings ID", "Balance"]
+                            "Annual Gross Income", "Checkings ID"]
             
             account_info = tabulate(account_rows, headers=column_names, tablefmt='grid')
             cursor.close()
             return account_info
-            
