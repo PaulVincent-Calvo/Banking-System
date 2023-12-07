@@ -41,7 +41,7 @@
  </picture>
 </p>
 
-## Note 
+## Notes 
 - placeholder text
 - placeholder text
 - placeholder text
