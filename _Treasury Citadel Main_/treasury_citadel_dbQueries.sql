@@ -78,3 +78,52 @@ CREATE TABLE transactions(
 
 
 
+-- VIEWS
+
+CREATE VIEW customer_information_view AS
+SELECT
+  customer_id,
+  first_name,
+  last_name,
+  email,
+  address,
+  id_type,
+  occupation,
+  annual_gross_income
+FROM
+  customer_information;
+
+
+
+CREATE VIEW transactions_view AS
+SELECT
+  transactions_id,
+  checkings_id,
+  transaction_type,
+  receiving_account,
+  transaction_date,
+  amount
+FROM transactions;
+
+
+CREATE VIEW checkings_account_view AS
+SELECT
+  checkings_id,
+  account_password,
+  balance,
+  account_status,
+  customer_id
+FROM
+  checkings_account;
+
+
+CREATE VIEW fetch_username AS
+SELECT 
+  check_acc.checkings_id,
+  cust.first_name
+FROM customer_information cust
+JOIN checkings_account check_acc ON cust.customer_id = check_acc.customer_id;
+
+
+
+
