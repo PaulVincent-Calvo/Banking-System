@@ -74,23 +74,6 @@ class GUI_Main:
         break
           
       
-  
-  # def call_loading_page(self):
-  #   self.call_file(r"C:\Users\ace\Downloads\OOP Recent Commits\Banking-System\gui\Main_Codes\loading_page.py")
-  #   time.sleep(0.3)
-    
-        
-  # def call_file(self, file_path):
-  #   try:
-  #     return_code = subprocess.call(['python', file_path])
-      
-  #     if return_code == 0:
-  #       print("Script executed successfully.")
-  #     else:
-  #       print(f"Script failed with return code: {return_code}")
-  #   except Exception as e:
-  #       print(f"An error occurred: {e}")
-      
       
 main = GUI_Main()
 main.Main()
