@@ -11,12 +11,25 @@
 ## Notes 
 - Make sure to replace all the directory paths in its corresponding folder assets or else it won't operate normally.
 - Use this connection to access the database and if it won't connect try changing the hostname to your current IP address
-- Username: user_treasury_citadel
-  Password: tC23_oop_dbms_pRoj2023
-  Hostname = %
-  Database = treasury_citadel_database
-- Log In as Employee: (Account ID: ETC231; Password: oneinamillion)
-- Log In as Customer: (Account ID: ATC231; Password: pass123)
+
+|Category  |Credentials               |
+|----------|--------------------------|
+|Username  |libraryadmin2             |
+|Password  |tC23_oop_dbms_pRoj2023    |
+|Hostname  |%                         |
+|Database  |treasury_citadel_database |
+
+- To log In as an Employee, use:
+  
+|Account iD|Password       |
+|----------|---------------|
+|ETC231    |oneinamillion  |
+
+- To log In as a Customer, use:
+  
+|Account iD|Password |
+|----------|---------|
+|ATC231    |pass123  |
 
 ## Setup
 - Python version 3.12 (the latest version won't work with the next tool)
