@@ -14,7 +14,7 @@
 
 |Category  |Credentials               |
 |----------|--------------------------|
-|Username  |libraryadmin2             |
+|Username  |user_treasury_citadel     |
 |Password  |tC23_oop_dbms_pRoj2023    |
 |Hostname  |%                         |
 |Database  |treasury_citadel_database |
