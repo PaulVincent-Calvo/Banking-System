@@ -20,12 +20,9 @@ class Login_Page:
     def __init__(self):
         self.employee = Employee()
         self.customer = Customer()
-        self.dedicated_id = None  # Variable to store dedicated ID
+        self.dedicated_id = None  
         self.login_window = None
         self.terminate_flag = False
-        # self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        # self.shift = 30
-        
     
     def terminate_program(self):
         close_session = messagebox.askquestion("Exit", "Exit the Program", icon = 'warning')
@@ -150,54 +147,5 @@ class Login_Page:
                     self.show_login_status(False, "Account Non-existent or Incorrect Password")
                     return False
     
-    
-    
-    
-    #   NOTE: not priority
-    # def encrypt_password(self, raw_password):
-    #     encrypted_text = ""
 
-    #     # Jumbles Placement of letters
-    #     raw_password = raw_password[-1] + raw_password[1:-1] + raw_password[0]
-    #     raw_password = raw_password[0:2] + raw_password[-1] + raw_password[3:-1] + raw_password[2]
-
-    #     # Shifts letters based on the predetermined shift value
-    #     for char in raw_password:
-    #         if char in self.alphabet:
-    #             index = self.alphabet.index(char)
-    #             new_index = (index + self.shift) % 52
-    #             new_char = self.alphabet[new_index]
-    #             encrypted_text += new_char
-    #         else:
-    #             encrypted_text += char
-    #     return encrypted_text
-    
-    
-    # def decrypt_password(self, encrypted_password):
-    #     decrypted_password = ""
-    #     for char in encrypted_password:
-    #         if char in self.alphabet:
-    #             index = self.alphabet.index(char)
-    #             new_index = (index - self.shift) % 52
-    #             new_char = self.alphabet[new_index]
-    #             decrypted_password += new_char
-    #         else:
-    #             decrypted_password += char
-    #     decrypted_password = decrypted_password[0:2] + decrypted_password[-1] + decrypted_password[3:-1] + decrypted_password[2]
-    #     decrypted_password = decrypted_password[-1] + decrypted_password[1:-1] + decrypted_password[0]
-        
-    #     return decrypted_password
-    
-    
-        
-    # def return_credentials(self, account_type, account_credentials):
-    #     account_id = account_credentials[0]
-    #     account_pass = account_credentials[1]
-    #     return [account_type, account_id, account_pass]
-    # def handling_admin_login(self, ):
-        
-        
-# login = Login_Page()
-# login.login_page()
-        
             
