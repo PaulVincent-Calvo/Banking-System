@@ -66,8 +66,13 @@
 
 
 ## Team Members
+## Object-Oriented Programming Students
 1. [Barcelona, Nielle E. (22-08167)](https://github.com/nielle003) 
 2. [Calvo, Paul Vincent A. (22-09188)](https://github.com/PaulVincent-Calvo)
-3. [Crisologo, Aaron Angelo D.(21-08166)](https://github.com/AaronCrisologo)
-4. [Penaflorida, Ace G.(22-09628)](https://github.com/AcePenaflorida)
-5. [Tolentino, John Benedict(22-03003)](https://github.com/sy1ph)
+3. [Crisologo, Aaron Angelo D. (21-08166)](https://github.com/AaronCrisologo)
+4. [Penaflorida, Ace G. (22-09628)](https://github.com/AcePenaflorida)
+5. [Tolentino, John Benedict (22-03003)](https://github.com/sy1ph)
+## Database Management System Students
+1. [Crisologo, Aaron Angelo D.(21-08166)](https://github.com/AaronCrisologo)
+2. [Penaflorida, Ace G.(22-09628)](https://github.com/AcePenaflorida)
+3. [Nuñez, Justin Mae T. (22-02253)](https://github.com/jstnnz)
