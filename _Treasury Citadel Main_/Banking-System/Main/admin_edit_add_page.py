@@ -20,10 +20,6 @@ def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 
-# NOTE Transaction Log: None: Search, Edit, Add, Delete
-# NOTE: Add Identifier for Transaction(Like: Edit User, Add something in add or delete)
-
-
 class Edit_Add_Page:
     
     def __init__(self) -> None:
@@ -445,10 +441,10 @@ class Edit_Add_Page:
         img_transacDate = PhotoImage(file=relative_to_assets("transac_date_icon.png"))
 
         transaction_date_image = canvas.create_image(
-            75.0,          # x-coordinate
-            255.0,         # y-coordinate
+            75.0,          
+            255.0,       
             image=img_transacDate,
-            anchor="nw"     # anchor point (north-west)
+            anchor="nw" 
         )
 
         canvas.create_text(
@@ -460,8 +456,7 @@ class Edit_Add_Page:
             font=("Inter Black", 55 * -1)
         )
         self.search_frame.display_searched_account(self.window, self.connection, search_account_query, account_id, session_indicator)
-        # self.frame.display_searched_account(self.window, search_acc_query, )
-
+        
         
         
         # dynamic access to the entries
