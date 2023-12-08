@@ -10,27 +10,6 @@ class Session_Transaction_Histories:
     def __init__(self):
          self.employee = Employee()
 
-    def connect_to_database(self):
-        connection = None
-        try:
-            host = "localhost"
-            username = "root"
-            password = ""
-            database = "treasury_citadel_database"
-
-            connection = mysql.connector.connect(
-                host=host,
-                user=username,
-                password=password,
-                database=database
-            )
-
-            print("Database Initialization Successful...")
-
-        except mysql.connector.Error as error:
-            print(error)
-
-        return connection
 
     def configure_style(self):
         style = ttk.Style()
@@ -95,7 +74,7 @@ class Session_Transaction_Histories:
 
     def populate_treeview(self, treeview, query, account_id, column_count):
         
-        connection = self.connect_to_database()
+        connection = self.employee.connect_to_database()
         cursor = connection.cursor()
         if account_id == None:
             cursor.execute(query)
