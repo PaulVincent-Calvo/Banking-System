@@ -1,2 +1,11 @@
 GDRIVE Link:
 https://drive.google.com/drive/folders/1bt3B9qfVVfGMpz4pjBh8VwbOPi9Mo8ra?usp=sharing
+
+
+## Notes 
+- Make sure to replace all the directory paths in its corresponding folder assets or else it won't operate normally.
+- Use this connection to access the database and if it won't connect try changing the hostname to your current IP address
+- Username: user_treasury_citadel
+  Password: tC23_oop_dbms_pRoj2023
+  Hostname = %
+  Database = treasury_citadel_database
