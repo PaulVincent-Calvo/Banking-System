@@ -3,11 +3,3 @@ Compilation of Figma projects used for GUI Design that was converted to Tkinter
 FINAL GUI DESIGN:
 https://www.figma.com/file/RfxU5UAtDNj6063epi8yPS/Final-GUI-Design?type=design&node-id=0%3A1&mode=design&t=kCiEyUw5LKZLur9P-1
 
-Employee Login Page
-https://www.figma.com/file/aecHtykWSrPuoVpnHosZYl/Treasury-Citadel?type=design&node-id=5-21&mode=design&t=qJ1hFH7fkZgcQSfM-0
-
-Customer Login Page
-https://www.figma.com/file/110Qsa0F54qgrD5xlCamVt/Customer-Login-Page?type=design&node-id=0-1&mode=design&t=3tGiztIpK4T6PFPb-0
-
-Employee Landing Page
-https://www.figma.com/file/gVts6cmqI8ELMzEs2y2kq0/Untitled?type=design&node-id=0-1&mode=design&t=71EBEA6ImPO9q6qP-0
