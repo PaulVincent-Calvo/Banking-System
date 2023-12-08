@@ -15,6 +15,8 @@
   Password: tC23_oop_dbms_pRoj2023
   Hostname = %
   Database = treasury_citadel_database
+- Log In as Employee: (Account ID: ETC231; Password: oneinamillion)
+- Log In as Customer: (Account ID: ATC231; Password: pass123)
 
 ## Setup
 - Python version 3.12 (the latest version won't work with the next tool)
