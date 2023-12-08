@@ -9,8 +9,8 @@
 #### <p align="center"> A Banking System simulation using Tkinter Designer (Python) and MySQL. </p>
 
 ## Notes 
-- Make sure to replace all the directory paths in its corresponding folder assets or else it won't operate normally.
-- Use this connection to access the database and if it won't connect try changing the hostname to your current IP address
+- Make sure to replace all the directory paths in their corresponding folder assets or else it won't operate normally.
+- Use this connection to access the database and if it doesn't connect try changing the hostname to your current IP address
 
 |Category  |Credentials               |
 |----------|--------------------------|
@@ -70,9 +70,9 @@
 1. [Barcelona, Nielle E. (22-08167)](https://github.com/nielle003) 
 2. [Calvo, Paul Vincent A. (22-09188)](https://github.com/PaulVincent-Calvo)
 3. [Crisologo, Aaron Angelo D. (21-08166)](https://github.com/AaronCrisologo)
-4. [Penaflorida, Ace G. (22-09628)](https://github.com/AcePenaflorida)
+4. [Peñaflorida, Ace G. (22-09628)](https://github.com/AcePenaflorida)
 5. [Tolentino, John Benedict (22-03003)](https://github.com/sy1ph)
 ## Database Management System Students
-1. [Crisologo, Aaron Angelo D.(21-08166)](https://github.com/AaronCrisologo)
-2. [Penaflorida, Ace G.(22-09628)](https://github.com/AcePenaflorida)
+1. [Crisologo, Aaron Angelo D. (21-08166)](https://github.com/AaronCrisologo)
+2. [Peñaflorida, Ace G. (22-09628)](https://github.com/AcePenaflorida)
 3. [Nuñez, Justin Mae T. (22-02253)](https://github.com/jstnnz)
