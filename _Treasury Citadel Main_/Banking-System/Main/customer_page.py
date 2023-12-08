@@ -412,9 +412,7 @@ class Customer_Page:
                     return [True, amount_decimal]
                 else:
                     return [False, ""]
-                # messagebox.showinfo(f"{session_type} Status", f"Confirm {session_type}?")
-                # return [True, amount_decimal]
-            
+              
             else:
                 messagebox.showerror(f"{session_type} Status", "Invalid Session..")
                 return [False, None]
@@ -429,7 +427,3 @@ class Customer_Page:
         status = "Proceed" if confirm == 'yes' else "Revoke"
         return status
         
-        
-    
-# customer_page = Customer_Page()
-# customer_page.customer_mainframe("ATC232")
