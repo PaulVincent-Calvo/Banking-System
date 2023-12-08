@@ -11,11 +11,6 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 
 
-
-# NOTE: Transactions ID (to be generate by JB's algo)
-# NOTE: pending Transactions ID
-
-
 class User(ABC): # NOTE: all functions to be used in child classes (Employee, Customer) are included in here
   
   def __init__(self, host, username, password, database): # encapsulation
@@ -50,8 +45,8 @@ class User(ABC): # NOTE: all functions to be used in child classes (Employee, Cu
       return
     
   def connect_database(self):
-    try:                     # NOTE: all users who will access the database must be connected to the same network
-      host = self._host  # Set to this according to your internet's ipv4 address (to check the ip address, go to the terminal and type: ipconfig)
+    try:                    
+      host = self._host  
       username = self._username
       password = self._password
       database = self._database
@@ -85,26 +80,10 @@ class User(ABC): # NOTE: all functions to be used in child classes (Employee, Cu
     continue_session = int(input("\n\nContinue Session (1 | 0): "))
     return 1 if continue_session == 1 else 0
 
-  def format_table(self, cursor): # using the tabulate library
-    try:
-      rows = cursor.fetchall()
-      if rows:
-        headers = [desc[0] for desc in cursor.description] # extract column names from the cursor.description
-        table = tabulate(rows, headers, tablefmt="pretty") # use the tabulate function to format the results as a table
-        print(table)
-      else:
-          print("No records found.")
-          
-    except mysql.connector.Error as error:
-      self.display_error(error, "MySQL")
-      cursor.execute("ROLLBACK;")
     
   def display_rows_affected(self, cursor, ID, IDContent):
     print(f"\n\t{cursor.rowcount} session initiated| {ID}: {IDContent}")
 
-  def confirm_action(self):
-    confirm = int(input("\n\tConfirm Selected Action | 1 | 0 |: "))
-    return True if confirm == 1 else False
   
   # NOTE: Inputs
   def input_date(self, description):
@@ -151,16 +130,7 @@ class User(ABC): # NOTE: all functions to be used in child classes (Employee, Cu
       return 0
 
 
-  # NOTE: Searching/Selecting Queries
-  def select_all_rows(self, cursor, table):
-    try:
-      query = f"SELECT * FROM {table}"
-      cursor.execute(query)
-      self.format_table(cursor) # prints the formatted tables
-      
-    except mysql.connector.Error as error:
-      self.display_error(error, "MySQL")
-      cursor.execute("ROLLBACK;") # undo the changes made during the transaction/session
+ 
   
   def check_account_existence(self, cursor, table, id_column, id_content):    
     try:
@@ -186,22 +156,14 @@ class User(ABC): # NOTE: all functions to be used in child classes (Employee, Cu
       cursor.execute("ROLLBACK;")
 
   
-  
-  # from Main_Ver2 import Customer
-  
-  # # self.customer = Customer()
-  # connection = self.customer.connect_database()
-  # cursor = connection.cursor()
-  # self.customer.fetch_single_value(connection, cursor, "checkings_account", "balance", "checkings_id", account_id)
-  
-  def fetch_single_value(self, connection, cursor, table, column, id_column, id_content): # function for DISPLAYING single values
+  def fetch_single_value(self, connection, cursor, table, column, id_column, id_content):
     try:
       cursor = connection.cursor()
       query = f"SELECT {column} FROM {table} WHERE {id_column} = %s"
       value = id_content
       cursor.execute(query,(value,))
       Result = cursor.fetchone()
-      return Result[0]#  returns the first column value of the first row in the result se
+      return Result[0]#  returns the first column value of the first row in the result set
     
     except mysql.connector.Error as error:
       self.display_error(error, "MySQL")
@@ -228,62 +190,16 @@ class User(ABC): # NOTE: all functions to be used in child classes (Employee, Cu
     except mysql.connector.Error as errro:
       print(errro)
 
-  # NOTE: Updating Query: employs optimistic concurreny control(checks if the timestamp and version during the reading/searching
-  # is the same during the writing/updating period ; if yes, the update proceeds; if not, a waiting time until the next session is initiated)
-  
-  def updating_query(self, connection, cursor, table, column, ID, IDcontent, value):
-    try:
-      cursor.execute("START TRANSACTION;")
-      update_attempt = 0
-      max_attempts = 3 
-      waiting_time = 5
-      
-      while update_attempt < max_attempts:
-        cursor.execute(f"SELECT version, last_modified FROM {table} WHERE {ID} = %s;", (IDcontent,)) # reads the current version(a placeholder varaiable) and timestamp of the record
-        result = cursor.fetchone()
-        current_version, last_modified = result[0], result[1] # 0 = version & 1 = last_modified(timestamp)
-        
-        print("\n\tProcessing.....")
-        time.sleep(2) 
-        
-        # NOTE: the current timestamp must match the last_modified timestamp to proceed to the update
-        main_query = f"UPDATE {table} SET {column} = %s, version = version + 1, last_modified = CURRENT_TIMESTAMP WHERE {ID} = %s AND last_modified = %s"
-        cursor.execute(main_query, (value, IDcontent, last_modified))
-        connection.commit()
-        
-        if cursor.rowcount > 0: # Update successful
-          os.system('cls')
-          self.display_rows_affected(cursor, ID, IDcontent)
-          break
 
-        else:
-          print(f"Update failed. Retrying after {waiting_time} seconds...")
-          update_attempt += 1
-          time.sleep(waiting_time) # 5 sec.
-          
-      if update_attempt == max_attempts:
-        print(f"Maximum update attempts reached. Update aborted.")
-        
-      return True
-            
-    except mysql.connector.Error as error:
-      self.display_error(error, "MySQL")
-      cursor.execute("ROLLBACK;")
-      raise
-
-    
 
     
 class Employee(User): # NOTE: inherits from USER 
   
-  def __init__(self): #  accept an instance of BankingSystem and store it as an attribute
+  def __init__(self):
     super().__init__(host="localhost", 
                      username="root",
                      password="",
                      database="treasury_citadel_database")
-
-    #self.banking_system = banking_system # to be used in the adminMain() 
-
   
   def login(self, connection, dedicated_id, dedicated_password):
     cursor = connection.cursor()
@@ -304,17 +220,6 @@ class Employee(User): # NOTE: inherits from USER
       return False
         
     
-  
-  def admin_display_options(self, description):
-    common_options = (f"\n\t_______{description} USERS_______\n\n"
-                      "\t[1] Customer Information\n"
-                      "\t[2] Checkings Accounts\n"
-                      "\t[3] Transactions\n")
-
-    additional_options = "\t[4] All Records\n \t[5] Return Home\n" if description == "VIEW" else "\t[4] Return Home\n"
-
-    description_display = common_options + additional_options
-    print(description_display)
 
   def generate_checkings_id(self):
     alphanumeric = string.ascii_letters + string.digits
@@ -394,12 +299,6 @@ class Employee(User): # NOTE: inherits from USER
 
   # NOTE: Foreign key constraints maintain referential integrity, ensuring that a user can only be deleted IF AND ONLY IF its references in related tables have been deleted
   def delete_user_by_ID(self, connection, cursor, employee_id, table, id_column, id_content):
-    # while True:
-      print("delete user accessed")
-      # account_exists = self.check_account_existence(cursor, table, id_column, id_content)
-      # # confirm_deletion = self.confirm_action()
-
-      # if account_exists:
       try:
         cursor.execute("SET foreign_key_checks = 0") # disabling foreign key checks temporarily to avoid violating foreign key constraints
         
@@ -423,7 +322,7 @@ class Employee(User): # NOTE: inherits from USER
         cursor.execute(delete_main_value, (id_content,)) # NOTE: deletion for the main value in the parent table
         connection.commit()
         self.display_rows_affected(cursor, id_column, id_content)
-        # self.add_transaction_log(connection, cursor, "Delete User", table, None, f"{id_column.capitalize()}: {id_content}", "Deleted")
+        
         self.add_transaction_log(connection, employee_id, "Delete User", table, None, f"{id_column.capitalize()}: {id_content}", "Deleted")
         return True
         
@@ -435,187 +334,6 @@ class Employee(User): # NOTE: inherits from USER
       finally:
         cursor.execute("SET foreign_key_checks = 1") # enabling the foreign key checks again
       
-    # elif not confirm_deletion:
-    #   return
-
-    # else:
-    #   print(f"\n\tAccount {id_content} is non-existent...")
-
-      if not self.continue_session():
-        self.adminMain()
-
-  
-
-  # NOTE: Insertion/Adding Queries
-  def add_customer_information(self, connection, cursor, employee_id):
-    os.system('cls')
-    print("\n\t---Add New Customer Information---\n")
-    while True:
-      try:
-        cust_fname = input("\t\tFirst Name: ")
-        cust_lname = input("\t\tLast Name: ")
-        cust_email = input("\t\tEmail: ")
-        cust_address = input("\t\tAddress: ")
-        cust_idType = input("\t\tID Type: ")
-        cust_occupation = input("\t\tOccupation: ")
-        cust_annGrossIncome = self.get_decimal_input("Annual Gross Income")
-
-        column = ["first_name", "last_name", "email", "address", "id_type", "occupation", "annual_gross_income"]
-        query = "INSERT INTO customer_information(first_name, last_name, email, address, id_type, occupation, annual_gross_income) VALUES (%s,%s, %s, %s, %s, %s, %s)"
-        values = (cust_fname, cust_lname, cust_email, cust_address, cust_idType, cust_occupation, cust_annGrossIncome)
-        
-        if self.confirm_action():
-          cursor.execute(query, values)
-          connection.commit()
-          self.display_rows_affected(cursor, "customer_id", cursor.lastrowid)
-          self.add_transaction_log(connection, employee_id, "Add User", "Customer Information", column, None, values)
-          break
-          
-        else: return
-
-      except ValueError as error:
-        self.display_error(error, "MySQL")
-
-  # NOTE: generic function for adding records(to be used in the checkings_account, bank_asset, transactions TABLES)
-  def add_record(self, connection, cursor, employee_id, referenced_table, insertion_table, prompt_message, column_names):
-    os.system('cls')
-    print(f"\n\t---{prompt_message}---\n")
-    self.select_all_rows(cursor, referenced_table) 
-    
-    while True:
-      try:
-        id_content = int(input(f"\n\t{column_names[0]}: ")) # accesses the first value in the passed list(it's always the ID; customer, checkings, transaction)
-        account_exists = self.check_account_existence(cursor, referenced_table, column_names[0], id_content)
-
-        if account_exists:
-          if len(column_names) == 5: # for checkings_account table
-            checking_id = self.get_new_value("Checkings ID", str)
-            if self.check_account_existence(cursor, "checkings_account", "checkings_id", checking_id):
-              print("Account ID already taken.")
-              continue
-            
-            else:
-              account_password = self.get_new_value("Account Password", str)
-              balance = self.handle_decimal_value_exception("Customer Checking Account", id_content, "Balance")
-              account_status = self.get_new_value("Account Status", str)
-              values = (id_content, checking_id, account_password, balance, account_status)
-
-          elif len(column_names) == 4: # for transactions table
-            os.system('cls')
-            transaction_date = self.input_date("Transaction")
-            amount = self.handle_decimal_value_exception("Checking Account", id_content, "Transaction Amount")
-            transaction_type = input("\n\tTransaction Type: ")
-            values = (id_content, transaction_date, amount, transaction_type)
-          
-          if self.confirm_action():
-            # NOTE: joining the values in the column_names then separating them using string formatting
-            query = f"INSERT INTO {insertion_table} ({', '.join(column_names)}) VALUES({', '.join(['%s'] * len(values))})"
-            cursor.execute(query, values)
-            connection.commit()
-            self.display_rows_affected(cursor, column_names[0], id_content)
-            self.add_transaction_log(connection, employee_id, "Add User", insertion_table, column_names, None, values)
-            break
-          
-          else: return
-          
-        else:
-          print(f"Account {id_content} is non-existent...")
-        
-      except mysql.connector.Error as error:
-        self.display_error(error, "MySQL")
-        cursor.execute("ROLLBACK;")
-    
-  def add_checkings_account(self, connection, cursor, employee_id):
-    referenced_table = "customer_information"
-    insertion_table = "checkings_account"
-    self.add_record(connection, cursor, employee_id, referenced_table, insertion_table, "Add New Checkings Account", ["customer_id", "checkings_id", "account_password", "balance", "account_status"]) # passing the column names for which values will be added in a list
-
-  # def add_bank_asset(self, connection, cursor):
-  #   referenced_table = "checkings_account"
-  #   insertion_table = "bank_asset"
-  #   self.add_record(connection, cursor, referenced_table, insertion_table, "Add New Bank Asset Information", ["checkings_id", "checkings_balance"])
-
-  def add_transactions(self, connection, cursor, employee_id):
-    referenced_table = "checkings_account"
-    insertion_table = "transactions"
-    self.add_record(connection, cursor, employee_id, referenced_table, insertion_table, "Add New Transaction Information", ["checkings_id", "transaction_type", "receiving_account", "transaction_date", "amount"])
-
-
-  # NOTE: Editing Queries (generic function for editing the user)
-  def edit_record(self, connection, cursor, employee_id, column_description, table, id_column, id_content, display_columns_options):
-    while True:
-      print(f"\n---{column_description}---")
-      account_exists = self.check_account_existence(cursor, table, id_column, id_content)
-
-      if account_exists:
-        os.system('cls')
-        print(f"\n\t------Edit Information for Customer {id_content}------\n", display_columns_options)
-        attribute = int(input("Choose Account Attribute: "))
-        
-        if table == "customer_information":
-          if attribute == 1:
-            print("Customer ID is not editable.") # assuming customer_id is not something the admin should update
-            continue
-          else:
-            #column = "customer_password" if attribute == 2 else "first_name" if attribute == 3 else "last_name" if attribute == 4 else "email" if attribute == 5 else "address" if attribute == 6 else "id_type" if attribute == 7 else "occupation" if attribute == 8 else "annual_gross_income" if attribute == 9 else None
-            column = "first_name" if attribute == 2 else "last_name" if attribute == 3 else "email" if attribute == 4 else "address" if attribute == 5 else "id_type" if attribute == 6 else "occupation" if attribute == 7 else "annual_gross_income" if attribute == 8 else None
-            
-        elif table == "checkings_account":
-          column = "account_password" if attribute == 1 else "balance" if attribute == 2 else "account_status" if attribute == 3 else None
-
-        
-        elif table == "transactions":
-          column = "transaction_type" if attribute == 1 else "receiving_account" if attribute == 2 else "transaction_date" if attribute == 3 else "amount" if attribute == 4 else None
-          # if attribute == 1:
-          #   column = "transaction_date"
-          # else:
-          #   column = "amount" if attribute == 2 else "transaction_type" if attribute == 3 else None
-
-
-        if column is not None:
-          os.system('cls')
-          print(f"\n\t------Edit {column.capitalize()}------")
-          current_value = self.fetch_single_value(connection, cursor, table, column, id_column, id_content)
-          self.display_current_value(column, current_value)
-
-          try: # NOTE: Inputs(each depending on the column's datatype)
-            if table == "customer_information":
-              if column == "annual_gross_income":
-                new_value = self.get_new_value(column, Decimal)
-              else:
-                new_value = self.get_new_value(column, str)
-            
-            elif table == "checkings_account":
-              if column == "balance":
-                new_value = self.get_new_value(column, Decimal)
-              else:
-                new_value = self.get_new_value(column, str)
-                
-
-            elif table == "transactions":
-              if column == "transaction_date":
-                new_value = self.get_new_value(column, datetime)
-              
-              elif column == "amount":
-                new_value = self.get_new_value(column, Decimal)
-              
-              else: # for columns: receiving_account and transaction_type
-                new_value = self.get_new_value(column, str)
-            
-            if self.confirm_action():
-              self.updating_query(connection, cursor, table, column, id_column, id_content, new_value)
-              # self.add_transaction_log(connection, cursor, "Edit User", table, column, current_value, new_value)
-              self.add_transaction_log(connection, employee_id, "Edit User", table, column, current_value, new_value)
-            else: return
-            
-            if not self.continue_session():
-              self.adminMain()
-            
-          except ValueError as error:
-            self.display_error(error)
-        
-      else:
-        print(f"\n\t-----Account {id_content} non-existent....\n")
 
 
   def adminMain(self):
@@ -627,224 +345,6 @@ class Employee(User): # NOTE: inherits from USER
       else:
         messagebox.showerror("Error", "Connection could not be established.")
           
-          
-          
-      #     os.system('cls')
-      #     try:
-      #       print("\n_______ADMIN AUTHORIZED_______\n"
-      #       "\t[1] View Users\n"
-      #       "\t[2] Edit Users\n"
-      #       "\t[3] Delete Users\n"
-      #       "\t[4] Add Users\n"
-      #       "\t[5] Transactions Log\n"
-      #       "\t[6] Logout")
-
-            
-      #       action = int(input("\n\tAction: "))
-            
-      #       if action == 1:
-      #         self.admin_view_user(connection, employee_id)
-      #         break
-
-      #       elif action == 2:
-      #         self.admin_edit_user(connection, employee_id)
-      #         break
-
-      #       elif action == 3:
-      #         self.admin_delete_user(connection, employee_id)
-      #         break
-
-      #       elif action == 4:
-      #         self.admin_add_user(connection, employee_id)
-      #         break
-            
-      #       elif action == 5:
-      #         self.view_transaction_log(connection)
-
-      #       elif action == 6:
-      #         os.system('cls')
-      #         banking_system.banking_main()
-            
-      #       else:
-      #         print("Invalid Input")
-              
-      #     except ValueError as error:
-      #       self.display_error(error, "ValueError")
-
-      # else:
-      #   input("\n\t Entry to try again....")
-        
-  def admin_view_user(self, connection, employee_id):
-    os.system('cls')
-    cursor = connection.cursor()
-    
-    while True:
-      os.system('cls')
-      self.admin_display_options("VIEW")
-        
-      try: 
-        action = int(input("\n\tAction: "))
-        
-        if action == 1:  # [1] Customer Information: table name as the parameter
-          table = "customer_information"
-          self.select_all_rows(cursor, table) 
-            
-        elif action == 2: # [2] Checkings Accounts
-          table = "checkings_account"
-          self.select_all_rows(cursor, table)
-          
-        elif action == 3: # [4] Transactions
-          table = "transactions"
-          self.select_all_rows(cursor, table)
-        
-        elif action == 4: # [4] All Records NOTE: the "all_records" is a VIEW which is used to JOIN all information of the tables
-          table = "all_records"
-          self.select_all_rows(cursor, "all_records")
-
-        elif action == 5:
-          self.adminMain()
-          
-        else:
-          print("Invalid Input...")
-          
-        self.add_transaction_log(connection, employee_id, "View User", table, None, None, None) # for session log
-        
-        if not self.continue_session(): # returns to main menu if false
-          self.adminMain()
-          
-      except ValueError as error:
-        self.display_error(error, "ValueError")
-  
-  
-  def admin_edit_user(self, connection, employee_id):
-    os.system('cls')
-    cursor = self.connection.cursor()
-    
-    while True:
-      os.system('cls')
-      try:
-        self.admin_display_options("EDIT")
-
-        action = int(input("\n\tEdit From: "))
-        
-        if action == 1: # for Customer Information
-          table = "customer_information"
-          self.select_all_rows(cursor, table) # displays the exiting customer information records
-          customer_id_content = int(input("\n\n\tCustomer ID: "))
-          column_options = "\n\t [1] Customer ID\n\t [2] First Name\n\t [3] Last Name\n\t [4] Email\n\t [5] Address\n\t [6] ID Type\n\t [7] Occupation\n\t [8] Annual Gross Income\n\t"
-          self.edit_record(connection, cursor, employee_id,  "Customer Information", table, "customer_id", customer_id_content, column_options)
-    
-        elif action == 2: # [2] Checkings Account
-          table = "checkings_account"
-          self.select_all_rows(cursor, table)
-          checkings_id_content = int(input("\n\n\tCheckings ID: "))
-          column_options = "\n\t[1] Account Password\n\t [2] Balance\n\t [3] Account Status"
-          self.edit_record(connection, cursor, employee_id, "Checkings Account Information", table, "checkings_id", checkings_id_content, column_options)
-            
-        # elif action == 3: # [3] Bank Asset
-        #   table = "bank_asset"
-        #   self.select_all_rows(cursor, table)
-        #   asset_id_content = int(input("Bank Asset ID: "))
-        #   column_options = "\n\t[1] Checkings Balance\n"
-        #   self.edit_record(connection, cursor, "Bank Asset Information", table, "asset_id", asset_id_content, column_options)
-          
-        elif action == 3: # [3] Transactions
-          table = "transactions"
-          self.select_all_rows(cursor, table)
-          transaction_id_content = int(input("\n\tTransaction ID: "))
-          column_options = "\n\t[1] Transaction Type\n\t[2] Receiving Account\n\t[3] Transaction Date\n\t [4] Amount\n"
-          self.edit_record(connection, cursor, employee_id, "Transaction Information", table, "transactions_id", transaction_id_content, column_options)
-          
-        elif action == 4: # [4] Return Home
-          self.adminMain()
-
-        if not self.continue_session(): # looping
-          self.adminMain()
-        
-      except ValueError as error:
-        self.display_error(error, "ValueError")
-          
-          
-  def admin_delete_user(self, connection, employee_id):
-    os.system('cls')
-    cursor = self.connection.cursor()
-    while True:
-      os.system('cls')
-      try:
-        self.admin_display_options("DELETE")
-        
-        action = int(input("\n\tDelete From: "))
-        
-        if action == 1: # [1] Customer Information
-          table = "customer_information"
-          self.select_all_rows(cursor, table)
-          customer_id_content = int(input("\n\tCustomer ID: "))
-          self.delete_user_by_ID(connection, cursor, employee_id, table, "customer_id", customer_id_content) # invoking the function for deletion given by the ff. parameters
-            
-            
-        elif action == 2: # [2] Checkings Accounts
-          table = "checkings_account"
-          self.select_all_rows(cursor, table)
-          checkings_id_content = int(input("\n\tCheckings Account ID: "))
-          self.delete_user_by_ID(connection, cursor, employee_id, table, "checkings_id", checkings_id_content)
-          
-          
-        # elif action == 3: # [3] Bank Assets
-        #   table = "bank_asset"
-        #   self.select_all_rows(cursor, table)
-        #   asset_id_content = int(input("\n\tBank Asset ID: "))
-        #   self.delete_user_by_ID(connection, cursor, table, "asset_id", asset_id_content)
-
-
-        elif action == 3: # [3] Transactions
-          table = "transactions"
-          self.select_all_rows(cursor, table)
-          transactions_id_content = int(input("\n\tTransaction ID: "))
-          self.delete_user_by_ID(connection, cursor, employee_id, table, "transactions_id", transactions_id_content)
-          
-        elif action == 4:
-          self.adminMain()
-
-      except ValueError as error:
-        print(f"Invalid Input....{error}")
-
-
-  def admin_add_user(self, connection, employee_id):
-    os.system('cls')
-    try:
-      cursor = connection.cursor()
-      
-      while True:
-        os.system('cls')
-        self.admin_display_options("ADD")
-
-        action = int(input("\n\tAdd User To: "))
-        
-        if action == 1:
-          self.add_customer_information(connection, cursor, employee_id)
-
-        elif action == 2:
-          self.add_checkings_account(connection, cursor, employee_id)
-
-        # elif action == 3:
-        #   self.add_bank_asset(connection, cursor, employee_id)
-
-        elif action == 3:
-          self.add_transactions(connection, cursor, employee_id)
-
-        elif action == 4:
-          self.adminMain()
-
-        else:
-          continue
-        
-        if not self.continue_session():
-          self.adminMain()
-    
-    except mysql.connector.Error as error:
-      self.display_error(error, "MySQL")
-      cursor.execute("ROLLBACK;")
-
 
 
 
@@ -954,8 +454,6 @@ class Customer(User): # NOTE: inherits from USER
     
     if withdrawal_amount <= current_balance:
       try:
-
-        # print(f"\n\tThe amount you want to withdraw is {withdraw_amount}...\n")
         message = f"The amount you want to withdraw is {withdrawal_amount}..."
         messagebox.showinfo("Withdrawal", message)
         new_balance = current_balance - withdrawal_amount
@@ -964,7 +462,6 @@ class Customer(User): # NOTE: inherits from USER
         self.updating_query(connection, cursor, table, column, "checkings_id", checking_account_id, new_balance)
         transac_log_status = self.add_transaction_log(connection,checking_account_id, "Withdraw", "None", withdrawal_amount)
         print(transac_log_status)
-        # self.view_transaction_status(new_balance)  # displays the transaction status
         return True
 
       except mysql.connector.Error as error:
@@ -1077,41 +574,7 @@ class Customer(User): # NOTE: inherits from USER
     except mysql.connector.Error as error:
       messagebox.showerror("MySQL: ", error)
 
-class Banking_System(): # NOTE: main
-  def __init__(self):
-    self.employee = Employee(self)  # Employee instance with a reference to the Banking_System instance it belongs to
-    self.customer = Customer(self)
-    self.connection = None  # Initialize connection here or in the login methods
-    
 
-  # MAIN program entrance
-  def banking_main(self):
-    while True:
-      os.system('cls')
-      print("\n\t----------Treasury Citadel Banking System----------\n\n"
-            "\t\t[1]: Admin / Employee\n\n"
-            "\t\t[2]: User / Customer\n")
-      
-      action = int(input("\n\t\tLog In as: "))
-
-      if action == 1:
-        # implement admin's log in system
-        # self.user = self.employee  # Do not create an instance of User directly
-        # self.connection = self.employee.connect_database()  # Use connect_database directly or in your adminMain method
-        self.employee.adminMain()
-        break
-      
-      elif action == 2:
-        # implement customer's log in system
-        self.customer.customerMain()
-        break
-
-      else:
-        os.system('cls')
-        print("\n\t-------Invalid Credential....")
-        input("\n\n\tPress enter to return to the main menu......")
-        continue
-    
   
 
 
