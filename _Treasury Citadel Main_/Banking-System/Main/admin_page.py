@@ -301,8 +301,6 @@ class Admin_Page:
                             self.admin_edit_add_page.main(account_id, top_level_window, session_indicator, "New Account", employee_id)
                             break
                         
-                        #NOTE : TO IMPLEMENT
-                        # self.employee.add_transaction_log(connection, employee_id, "Add User", table_involved, )
                     else: break
             
             elif session_indicator == "Edit User":
@@ -363,8 +361,4 @@ class Admin_Page:
         messagebox.showinfo("Deletion Status", status_message) if status else messagebox.showerror("Deletion Error", status_message)
                     
              
-    # def logout(self):
-    #     if self.admin_main_window:
-    #         self.admin_main_window.withdraw()
-    #         self.login_frame.login_page()
 
