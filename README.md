@@ -8,6 +8,14 @@
 
 #### <p align="center"> A Banking System simulation using Tkinter Designer (Python) and MySQL. </p>
 
+## Notes 
+- Make sure to replace all the directory paths in its corresponding folder assets or else it won't operate normally.
+- Use this connection to access the database and if it won't connect try changing the hostname to your current IP address
+- Username: user_treasury_citadel
+  Password: tC23_oop_dbms_pRoj2023
+  Hostname = %
+  Database = treasury_citadel_database
+
 ## Setup
 - Python version 3.12 (the latest version won't work with the next tool)
 - Download and setup [Tkinter Designer](https://github.com/ParthJadhav/Tkinter-Designer)
@@ -41,11 +49,7 @@
  </picture>
 </p>
 
-## Notes 
-- placeholder text
-- placeholder text
-- placeholder text
-  
+
 ## Team Members
 1. [Barcelona, Nielle E. (22-08167)](https://github.com/nielle003) 
 2. [Calvo, Paul Vincent A. (22-09188)](https://github.com/PaulVincent-Calvo)
