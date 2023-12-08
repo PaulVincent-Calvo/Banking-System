@@ -577,9 +577,3 @@ class Customer(User): # NOTE: inherits from USER
 
   
 
-
-
-# MAIN program entrance
-if __name__ == "__main__":
-  banking_system = Banking_System()
-  banking_system.banking_main()
