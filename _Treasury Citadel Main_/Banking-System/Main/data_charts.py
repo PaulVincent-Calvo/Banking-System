@@ -86,15 +86,3 @@ class Data_Charts:
         self.display_charts("Account Status Charts", ["Active", "Inactive"], [count_active, count_inactive])
 
 
-
-
-
-                
-                
-# run_chart = Data_Charts()
-# # run_chart.run_transaction_chart("Customer", "ATC232")
-# # run_chart.run_transaction_chart("Employee", None)
-
-# run_chart.run_account_status_chart()
-# # run_chart.run_account_status_chart("Customer", "ATC232")
-
